@@ -1,0 +1,27 @@
+# Rendered output and local secrets
+rendered/
+.env
+.env.*
+!.env.example
+
+# OpenClaw runtime state
+memory/
+memory-md/
+logs/
+agents/
+sessions/
+tasks/
+flows/
+cron/runs/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Backups
+*.backup.*
+*.bak
+.openclaw-codex-backups/
+
+# System/editor
+.DS_Store
+node_modules/
