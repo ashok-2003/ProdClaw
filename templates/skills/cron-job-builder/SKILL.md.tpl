@@ -37,11 +37,11 @@ description: >
 
 ```yaml
 models:
-  general: "openrouter/qwen/qwen3.6-plus"
-  judgment_analysis: "openrouter/z-ai/glm-5.1"
-  web_research: "openrouter/google/gemini-3.1-pro"
+  compliance_primary: "openrouter/xiaomi/mimo-v2.5-pro"
+  selection_rule: "best quality-to-price reasoning model with strong non-hallucination behavior"
+  judgment_fallback: "openrouter/moonshotai/kimi-k2.6"
 
-fallback_chain: "openrouter/z-ai/glm-5.1,openrouter/xiaomi/mimo-v2-pro"
+fallback_chain: "openrouter/moonshotai/kimi-k2.6,openrouter/z-ai/glm-5.1"
 
 timeouts:
   simple_check: 420   # 7 min
@@ -123,7 +123,7 @@ RULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source
 | `--stagger` | 60–300 | Add offset if other jobs at same time |
 | `--model` | see models above | Pick by task type |
 | `--timeoutSeconds` | 420 or 900 | Simple vs analysis |
-| `--fallbacks` | fixed chain | `glm-5.1 → mimo-v2-pro` |
+| `--fallbacks` | fixed chain | `kimi-k2.6 → glm-5.1` |
 | `--toolsAllow` | comma-separated | `read,exec,web_search,web_fetch` typical |
 | `--description` | one-liner | Human-readable summary |
 
@@ -132,7 +132,7 @@ RULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source
 ```
 Task type? ─┬─ Data retrieval / simple check → qwen3.6-plus
              ├─ Judgment / comparison / analysis → glm-5.1
-             ├─ Web research / external lookup → gemini-3.1-pro
+             ├─ Web research / external lookup → compliance primary unless explicitly approved otherwise
              └─ Unsure → qwen3.6-plus (general default)
 ```
 

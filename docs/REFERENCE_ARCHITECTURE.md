@@ -19,7 +19,7 @@ ProdClaw is built around one idea: the agent runtime should be small enough to s
 | --- | --- | --- | --- |
 | `main` | Owner-facing orchestrator | Kimi primary, GLM/Mimo fallback | Coding profile plus message and memory tools |
 | `consultant` | Architecture and judgment peer | Gemini primary, S-tier fallbacks | Full profile, no cron/gateway |
-| `compliance` | Audit and maintenance watchdog | Mimo primary, Kimi/GLM fallback | Full profile, no cron/gateway |
+| `compliance` | Audit and maintenance watchdog | Compliance policy primary, Kimi/GLM fallback | Full profile, no cron/gateway |
 
 ## Plugin Surface
 

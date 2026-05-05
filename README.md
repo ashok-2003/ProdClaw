@@ -30,7 +30,7 @@ The architecture is intentionally opinionated because the value is in the shape.
 | Models | OpenRouter-first policy with curated primary/fallback chains |
 | Memory | LanceDB Pro as the semantic memory slot |
 | Slack | Two required bots: default user-facing bot and compliance delivery bot |
-| Cron | Compliance jobs enabled by default, using Mimo v2.5 Pro |
+| Cron | Compliance jobs enabled by default, using the current compliance model policy |
 | Surface area | Native provider plugins disabled; only utility/channel plugins stay on |
 
 ## Why It Feels Faster
@@ -59,6 +59,14 @@ With this harness, the runtime has a job:
 - Slack owns the human interface.
 
 The design goal is simple: keep the harness thin, keep skills fat, and keep recurring operational discipline outside the user's head.
+
+## Model Policy
+
+ProdClaw does not ask every installer to become a model leaderboard analyst. It ships with a curated model policy and updates that policy when the market changes.
+
+For compliance work, the rule is not "always use one vendor forever." The rule is: use the best quality-to-price reasoning model available through OpenRouter, with strong analysis performance and a high non-hallucination rate. The current default is `openrouter/xiaomi/mimo-v2.5-pro` because it hits that balance for watchdog work: enough reasoning for audits, low enough cost for scheduled use, and strong resistance to fabricated findings.
+
+That default is a policy choice, not a religious choice. When the quality/price frontier moves, the model policy should move with it.
 
 ## Install Path
 

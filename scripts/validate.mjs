@@ -41,6 +41,7 @@ const nativeProviders = [
   "zai",
 ];
 
+const compliancePrimaryModel = "openrouter/xiaomi/mimo-v2.5-pro";
 const requiredPlugins = [
   "memory-lancedb-pro",
   "duckduckgo",
@@ -121,7 +122,10 @@ assert(cron.jobs.length >= 10, "Expected compliance cron jobs to be present.");
 for (const job of cron.jobs) {
   assert(job.enabled === true, "Cron job must be enabled: " + job.name);
   assert(job.agentId === "compliance", "Cron job must target compliance: " + job.name);
-  assert(job.payload?.model === "openrouter/xiaomi/mimo-v2.5-pro", "Cron job must use Mimo primary: " + job.name);
+  assert(!job.state, "Cron template must not include runtime state: " + job.name);
+  assert(job.createdAtMs === undefined, "Cron template must not include createdAtMs: " + job.name);
+  assert(job.updatedAtMs === undefined, "Cron template must not include updatedAtMs: " + job.name);
+  assert(job.payload?.model === compliancePrimaryModel, "Cron job must use current compliance model policy: " + job.name);
   const fallbacks = job.payload?.fallbacks ?? [];
   assert(fallbacks[0] === "openrouter/moonshotai/kimi-k2.6", "Cron first fallback must be Kimi: " + job.name);
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
