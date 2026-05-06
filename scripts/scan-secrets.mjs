@@ -23,7 +23,14 @@ function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith("--")) out[arg.slice(2)] = argv[++i];
+    if (!arg.startsWith("--")) continue;
+    const key = arg.slice(2);
+    // Boolean flags that take no value.
+    if (key === "json") {
+      out[key] = true;
+      continue;
+    }
+    out[key] = argv[++i];
   }
   return out;
 }
@@ -58,7 +65,7 @@ const SECRET_PATTERNS = [
 
 const args = parseArgs(process.argv.slice(2));
 const scanRoot = path.resolve(args.path || ".");
-const jsonOutput = Object.hasOwn(args, "json");
+const jsonOutput = args.json === true;
 
 if (!fs.existsSync(scanRoot)) {
   console.error("Scan path not found: " + scanRoot);
