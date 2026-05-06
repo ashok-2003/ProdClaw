@@ -83,6 +83,39 @@ node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
+## Validation
+
+ProdClaw separates two distinct validation concerns.
+
+### Local rendered config validation
+
+```bash
+node scripts/validate.mjs --rendered ./rendered
+```
+
+Validates the locally staged configuration before applying it. Run this after
+`render` and before `diff` / `apply`. It:
+
+- confirms all required files exist and JSON files parse
+- confirms required secret fields are populated (no unfilled placeholders)
+- never prints secret values
+- **allows** real credentials — `./rendered` is intentionally git-ignored
+
+### Repository / CI secret scanning
+
+```bash
+node scripts/scan-secrets.mjs
+# or: npm run scan-secrets
+```
+
+Scans committed repository files for accidentally leaked credentials. Run this
+in CI (e.g. GitHub Actions). It:
+
+- fails if real OpenRouter or Slack tokens are found in committed files
+- scans templates, docs, scripts, and all committed content
+- **allows** `{{PLACEHOLDER}}` tokens in templates
+- skips the `rendered/` directory (which is git-ignored and intentionally holds real secrets)
+
 ## Agent-Led Setup
 
 If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR_AGENTS.md). The agent must inspect first, render second, validate third, and apply only after explicit approval.

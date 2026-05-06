@@ -131,25 +131,22 @@ const allText = walk(rendered)
   .map((file) => fs.readFileSync(file, "utf8"))
   .join("\n");
 
+// Checks that apply to local rendered output (secrets are expected here; rendered/ is git-ignored).
+// We only reject unreplaced placeholders and leftover placeholder-name literals that indicate
+// the user forgot to supply a required input during render.
 const blockedNames = ["as" + "hok", "sha" + "shwat"];
 const blockedHome = new RegExp("/home/" + blockedNames[1], "i");
-const openRouterPrefix = "sk-" + "or-v1-";
-const slackBotPrefix = "xo" + "xb-";
-const slackAppPrefix = "xa" + "pp-";
 const forbidden = [
-  [new RegExp(openRouterPrefix + "[A-Za-z0-9_-]+"), "OpenRouter token pattern"],
-  [new RegExp(slackBotPrefix + "[A-Za-z0-9-]+"), "Slack bot token pattern"],
-  [new RegExp(slackAppPrefix + "[A-Za-z0-9-]+"), "Slack app token pattern"],
   [new RegExp("\\b" + blockedNames[0] + "\\b", "i"), "blocked personal name"],
   [new RegExp("\\b" + blockedNames[1] + "\\b", "i"), "blocked personal name"],
   [blockedHome, "blocked personal absolute path"],
   [/\{\{[A-Z0-9_]+\}\}/, "unreplaced template placeholder"],
-  [/\bOPENROUTER_API_KEY\b/, "missing OpenRouter API key"],
-  [/\bSLACK_BOT_TOKEN\b/, "missing Slack bot token"],
-  [/\bSLACK_APP_TOKEN\b/, "missing Slack app token"],
-  [/\bSLACK_COMPLIANCE_BOT_TOKEN\b/, "missing Slack compliance bot token"],
-  [/\bSLACK_COMPLIANCE_APP_TOKEN\b/, "missing Slack compliance app token"],
-  [/\bSLACK_USER_ID\b/, "missing Slack user ID"],
+  [/\bOPENROUTER_API_KEY\b/, "missing OpenRouter API key (run render with --openrouter-api-key)"],
+  [/\bSLACK_BOT_TOKEN\b/, "missing Slack bot token (run render with --slack-bot-token)"],
+  [/\bSLACK_APP_TOKEN\b/, "missing Slack app token (run render with --slack-app-token)"],
+  [/\bSLACK_COMPLIANCE_BOT_TOKEN\b/, "missing Slack compliance bot token (run render with --slack-compliance-bot-token)"],
+  [/\bSLACK_COMPLIANCE_APP_TOKEN\b/, "missing Slack compliance app token (run render with --slack-compliance-app-token)"],
+  [/\bSLACK_USER_ID\b/, "missing Slack user ID (run render with --slack-user-id)"],
 ];
 
 for (const [pattern, label] of forbidden) {

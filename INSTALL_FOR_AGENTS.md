@@ -32,7 +32,7 @@ You are installing an opinionated OpenClaw harness for a user who already has Op
    ```bash
    node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...]
    ```
-3. Validate:
+3. Validate the rendered output (allows real secrets; rendered/ is git-ignored):
    ```bash
    node scripts/validate.mjs --rendered ./rendered
    ```
@@ -58,3 +58,7 @@ You are installing an opinionated OpenClaw harness for a user who already has Op
 ## Known Gap
 
 Slack owner-mediated relay for third-party channel mentions is not implemented in v1. Keep the current practical Slack behavior and document this as future runtime hardening, not a prompt-only fix.
+
+## Validation Notes
+
+`scripts/validate.mjs` validates local rendered output and explicitly **allows** real secrets (because `./rendered` is git-ignored). Never confuse it with `scripts/scan-secrets.mjs`, which is intended for CI and rejects committed real credentials.

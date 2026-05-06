@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "validate": "node scripts/validate.mjs --rendered ./rendered",
+    "scan-secrets": "node scripts/scan-secrets.mjs --path .",
     "inspect": "node scripts/setup.mjs inspect --home ~/.openclaw"
   }
 }
