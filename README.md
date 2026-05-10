@@ -6,6 +6,8 @@ Your AI agent should not forget, drift, or silently break. ProdClaw adds an opin
 
 ProdClaw v1 is for existing OpenClaw users who want a production-ready setup. It is not a from-scratch OpenClaw installer yet.
 
+ProdClaw does not replace your whole OpenClaw home or take ownership of runtime data. It adds a managed production harness around the parts it owns, while preserving conversations, memory, logs, auth, runtime databases, non-ProdClaw skills, and user-created files.
+
 ## Who v1 is for
 
 ProdClaw v1 is for existing OpenClaw users, technical founders, indie hackers, AI power users, and small technical teams who want a stricter production harness around their local agent runtime.
@@ -113,12 +115,38 @@ If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR
 
 - [Reference Architecture](docs/REFERENCE_ARCHITECTURE.md)
 - [Existing OpenClaw Migration](docs/EXISTING_OPENCLAW_MIGRATION.md)
+- [What ProdClaw Touches](docs/WHAT_PRODCLAW_TOUCHES.md)
 - [Security And Slack](docs/SECURITY_AND_SLACK.md)
 - [Operations](docs/OPERATIONS.md)
 - [From-Scratch Setup Deferred](docs/FROM_SCRATCH_DEFERRED.md)
 
 ## Safety boundary
 
-ProdClaw does not manage your memories, sessions, logs, auth profiles, or LanceDB data. It stages only the opinionated harness files: config, workspace instructions, skills, compliance prompts, and cron definitions.
+ProdClaw does not replace the full OpenClaw home. It manages the harness layer only:
 
-The full v1 safety boundary will be expanded into dedicated docs before implementation work proceeds.
+- OpenClaw config;
+- workspace instructions;
+- consultant workspace instructions;
+- compliance workspace instructions;
+- compliance prompts;
+- ProdClaw-owned skills;
+- model routing policy;
+- plugin policy;
+- ProdClaw-owned cron jobs.
+
+ProdClaw does not modify or delete:
+
+- sessions;
+- conversations;
+- memories;
+- LanceDB data;
+- markdown memory;
+- logs;
+- auth profiles;
+- runtime databases;
+- plugin installation directories;
+- non-ProdClaw skills;
+- non-ProdClaw cron jobs;
+- user-created files outside managed paths.
+
+Before applying changes, ProdClaw creates a backup and shows a diff. Nothing is applied until you explicitly approve it.
