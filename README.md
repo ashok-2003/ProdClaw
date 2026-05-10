@@ -6,6 +6,8 @@ Your AI agent should not forget, drift, or silently break. ProdClaw adds an opin
 
 ProdClaw v1 is for existing OpenClaw users who want a production-ready setup. It is not a from-scratch OpenClaw installer yet.
 
+ProdClaw does not replace your whole OpenClaw home or take ownership of runtime data. It adds a managed production harness around the parts it owns, while preserving conversations, memory, logs, auth, runtime databases, non-ProdClaw skills, and user-created files.
+
 ## Who v1 is for
 
 ProdClaw v1 is for existing OpenClaw users, technical founders, indie hackers, AI power users, and small technical teams who want a stricter production harness around their local agent runtime.
@@ -120,7 +122,7 @@ If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR
 
 ## Safety boundary
 
-ProdClaw manages the harness layer only:
+ProdClaw does not replace the full OpenClaw home. It manages the harness layer only:
 
 - OpenClaw config;
 - workspace instructions;
