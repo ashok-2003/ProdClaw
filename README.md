@@ -39,6 +39,14 @@ ProdClaw does not require a separate database server. OpenClaw runtime storage a
 | Cron | Scheduled compliance/self-audit jobs after setup safety checks |
 | Safety | Managed-file diff, backup, and rollback boundaries |
 
+## Memory without agent overhead
+
+ProdClaw treats memory as infrastructure, not as another chore for the agent.
+
+The agent should not have to manually decide what to remember, where to store it, how to search it, or how to inject it back into context. LanceDB Pro makes memory part of the system layer: auto-capture, hybrid retrieval, reranking, multi-scope isolation, long-context chunking, and recall happen behind the harness so the agent can focus on the task instead of managing its own notebook.
+
+That is the product bet: memory continuity should improve reliability without bloating every prompt or forcing the agent to do extra memory work. LanceDB Pro is the memory engine behind that bet, with LoCoMo-style long-context memory benchmarking positioned around an 80% score.
+
 ## Cost-efficient by design
 
 ProdClaw is production-ready without being wasteful. Routine work can run on efficient models, while high-judgment work escalates through the consultant architecture. Compliance jobs use curated model/fallback policies so you are not using the most expensive model for every task.
@@ -113,4 +121,4 @@ If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR
 
 ProdClaw does not manage your memories, sessions, logs, auth profiles, or LanceDB data. It stages only the opinionated harness files: config, workspace instructions, skills, compliance prompts, and cron definitions.
 
-The full v1 safety boundary is tracked in issue #9 and will be expanded into dedicated docs before implementation work proceeds.
+The full v1 safety boundary will be expanded into dedicated docs before implementation work proceeds.
