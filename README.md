@@ -113,12 +113,38 @@ If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR
 
 - [Reference Architecture](docs/REFERENCE_ARCHITECTURE.md)
 - [Existing OpenClaw Migration](docs/EXISTING_OPENCLAW_MIGRATION.md)
+- [What ProdClaw Touches](docs/WHAT_PRODCLAW_TOUCHES.md)
 - [Security And Slack](docs/SECURITY_AND_SLACK.md)
 - [Operations](docs/OPERATIONS.md)
 - [From-Scratch Setup Deferred](docs/FROM_SCRATCH_DEFERRED.md)
 
 ## Safety boundary
 
-ProdClaw does not manage your memories, sessions, logs, auth profiles, or LanceDB data. It stages only the opinionated harness files: config, workspace instructions, skills, compliance prompts, and cron definitions.
+ProdClaw manages the harness layer only:
 
-The full v1 safety boundary will be expanded into dedicated docs before implementation work proceeds.
+- OpenClaw config;
+- workspace instructions;
+- consultant workspace instructions;
+- compliance workspace instructions;
+- compliance prompts;
+- ProdClaw-owned skills;
+- model routing policy;
+- plugin policy;
+- ProdClaw-owned cron jobs.
+
+ProdClaw does not modify or delete:
+
+- sessions;
+- conversations;
+- memories;
+- LanceDB data;
+- markdown memory;
+- logs;
+- auth profiles;
+- runtime databases;
+- plugin installation directories;
+- non-ProdClaw skills;
+- non-ProdClaw cron jobs;
+- user-created files outside managed paths.
+
+Before applying changes, ProdClaw creates a backup and shows a diff. Nothing is applied until you explicitly approve it.
