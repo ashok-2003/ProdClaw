@@ -9,6 +9,7 @@ You are installing an opinionated OpenClaw harness for a user who already has Op
 - Do not print secrets.
 - Do not edit the live OpenClaw home during inspect/render/diff.
 - Apply only after backup and explicit approval.
+- Preserve sessions, conversations, memories, LanceDB data, logs, auth profiles, runtime databases, non-ProdClaw skills, non-ProdClaw cron jobs, and user-created files outside managed paths.
 - Prefer OpenClaw CLI commands for runtime configuration where practical.
 
 ## Required Inputs
@@ -46,14 +47,81 @@ You are installing an opinionated OpenClaw harness for a user who already has Op
    node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes
    ```
 
+## What ProdClaw Changes
+
+ProdClaw manages the harness layer only:
+
+- OpenClaw config;
+- workspace instructions;
+- consultant workspace instructions;
+- compliance workspace instructions;
+- compliance prompts;
+- ProdClaw-owned skills;
+- model routing policy;
+- plugin policy;
+- ProdClaw-owned cron jobs.
+
+## What ProdClaw Preserves
+
+ProdClaw does not modify or delete:
+
+- sessions;
+- conversations;
+- memories;
+- LanceDB data;
+- markdown memory;
+- logs;
+- auth profiles;
+- runtime databases;
+- plugin installation directories;
+- non-ProdClaw skills;
+- non-ProdClaw cron jobs;
+- user-created files outside managed paths.
+
 ## What This Installs
 
 - Three agents: `main`, `consultant`, `compliance`
 - LanceDB Pro memory slot
 - OpenRouter model routing
-- Two Slack accounts
+- Compliance Slack delivery
+- Optional main Slack interaction
 - Compliance cron definitions
 - Workspace instructions and skills
+
+## Apply Confirmation Boundary
+
+Before final approval, show the user the managed-file boundary:
+
+```text
+ProdClaw is ready to apply.
+
+Detected:
+- OpenClaw home: <path>
+- Timezone: <timezone>
+- Compliance Slack: verified
+- LanceDB Pro: installed and enabled
+- OpenRouter: configured
+- Backup: will be created before changes
+
+ProdClaw will modify:
+- openclaw.json
+- workspace instruction files
+- compliance prompts
+- ProdClaw-owned skills
+- cron/jobs.json entries owned by ProdClaw
+
+ProdClaw will preserve:
+- sessions
+- memories
+- LanceDB data
+- logs
+- auth profiles
+- runtime databases
+- non-ProdClaw skills
+- non-ProdClaw cron jobs
+
+Type APPLY to continue.
+```
 
 ## Known Gap
 
