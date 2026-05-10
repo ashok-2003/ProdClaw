@@ -1,12 +1,49 @@
 # ProdClaw
 
-Your AI agent is not slow because the model is weak. It is slow because the harness is noisy.
+ProdClaw turns an existing OpenClaw setup into a reliable, cost-efficient personal AI coworker.
 
-ProdClaw is an opinionated operating system for a personal OpenClaw runtime: three agents, one memory layer, one model router, two Slack bots, and a compliance loop that keeps the system honest. It is built for people who already run OpenClaw and want the architecture, not a blank configuration file.
+Your AI agent should not forget, drift, or silently break. ProdClaw adds an opinionated production harness around OpenClaw: durable memory through LanceDB Pro, OpenRouter model routing, main/consultant/compliance role separation, compliance Slack delivery, scheduled self-audits, safe backup, and managed-file rollback.
 
-This is not a generic starter kit. It is a migration path into a specific working shape.
+ProdClaw v1 is for existing OpenClaw users who want a production-ready setup. It is not a from-scratch OpenClaw installer yet.
 
-## The Bet
+## Who v1 is for
+
+ProdClaw v1 is for existing OpenClaw users, technical founders, indie hackers, AI power users, and small technical teams who want a stricter production harness around their local agent runtime.
+
+It assumes you are comfortable with OpenRouter, Slack apps, and an existing OpenClaw installation.
+
+If you do not already have OpenClaw installed, wait for the v2 from-scratch setup path.
+
+## Requirements
+
+ProdClaw v1 requires:
+
+- an existing OpenClaw installation;
+- OpenRouter for model routing;
+- LanceDB Pro for memory;
+- a compliance Slack app for audit delivery.
+
+A main Slack app is optional. You can skip it if you prefer to interact through your existing OpenClaw dashboard/local UI.
+
+ProdClaw does not require a separate database server. OpenClaw runtime storage and LanceDB Pro memory are local/embedded storage concerns.
+
+## What ProdClaw adds
+
+| Layer | v1 decision |
+| --- | --- |
+| Runtime | Existing OpenClaw installation, migrated in place after backup |
+| Agents | `main`, `consultant`, and `compliance` roles |
+| Models | OpenRouter-first routing with curated primary/fallback policies |
+| Memory | LanceDB Pro as the durable semantic memory layer |
+| Slack | Required compliance Slack delivery; optional main Slack interaction |
+| Cron | Scheduled compliance/self-audit jobs after setup safety checks |
+| Safety | Managed-file diff, backup, and rollback boundaries |
+
+## Cost-efficient by design
+
+ProdClaw is production-ready without being wasteful. Routine work can run on efficient models, while high-judgment work escalates through the consultant architecture. Compliance jobs use curated model/fallback policies so you are not using the most expensive model for every task.
+
+## Why this harness exists
 
 Most agent setups optimize the wrong thing. They add more prompt, more tools, more providers, more autonomy, and then wonder why the system gets slower and less predictable.
 
@@ -17,77 +54,54 @@ ProdClaw takes the opposite position:
 - model routing should be centralized;
 - memory should be a real subsystem;
 - recurring audits should be scheduled, not remembered;
-- Slack should be an interface, not an unbounded permission surface.
+- Slack should be a controlled delivery path, not an unbounded permission surface.
 
-The architecture is intentionally opinionated because the value is in the shape. You can change it, but the default should already know what it is trying to be.
-
-## What You Get
-
-| Layer | Decision |
-| --- | --- |
-| Runtime | Existing OpenClaw installation, migrated in place after backup |
-| Agents | `main`, `consultant`, `compliance` |
-| Models | OpenRouter-first policy with curated primary/fallback chains |
-| Memory | LanceDB Pro as the semantic memory slot |
-| Slack | Two required bots: default user-facing bot and compliance delivery bot |
-| Cron | Compliance jobs enabled by default, using Mimo v2.5 Pro |
-| Surface area | Native provider plugins disabled; only utility/channel plugins stay on |
-
-## Why It Feels Faster
-
-The harness gets lighter by removing unnecessary runtime surface:
-
-| Removed Pressure | Replacement |
-| --- | --- |
-| Native provider plugin sprawl | OpenRouter-first model plane |
-| Manual memory discipline | LanceDB Pro auto-capture/auto-recall |
-| One agent doing every job | Main/consultant/compliance separation |
-| Prompt-only governance | Compliance cron and validation scripts |
-| Always-on broad tools | Narrow defaults plus explicit allowances |
+The default is intentionally opinionated because the value is reliability, memory continuity, compliance checks, safer upgrades, rollback, and cost-efficient model routing.
 
 ## Before / After
 
-Without this harness, OpenClaw usually grows by accident: provider plugins stay enabled, prompts accrete, cron jobs drift, memory becomes ambiguous, and every new feature adds more context weight.
+Without this harness, OpenClaw can grow by accident: provider plugins stay enabled, prompts accrete, cron jobs drift, memory becomes ambiguous, and every new feature adds more context weight.
 
-With this harness, the runtime has a job:
+With ProdClaw, the runtime has a job:
 
-- `main` orchestrates the owner-facing work.
-- `consultant` handles high-quality architecture and judgment.
+- `main` handles owner-facing orchestration.
+- `consultant` handles high-judgment architecture and review.
 - `compliance` audits the harness on a schedule.
-- LanceDB Pro owns semantic memory.
+- LanceDB Pro owns durable semantic memory.
 - OpenRouter owns model routing.
-- Slack owns the human interface.
+- Compliance Slack owns production audit delivery.
 
 The design goal is simple: keep the harness thin, keep skills fat, and keep recurring operational discipline outside the user's head.
 
-## Install Path
+## Install path
 
 Primary path: existing OpenClaw users.
 
-```bash
-node scripts/setup.mjs inspect --home ~/.openclaw
-node scripts/setup.mjs render --home ~/.openclaw --out ./rendered \
-  --user-name "Your Name" \
-  --openrouter-api-key "$OPENROUTER_API_KEY" \
-  --slack-bot-token "$SLACK_BOT_TOKEN" \
-  --slack-app-token "$SLACK_APP_TOKEN" \
-  --slack-compliance-bot-token "$SLACK_COMPLIANCE_BOT_TOKEN" \
-  --slack-compliance-app-token "$SLACK_COMPLIANCE_APP_TOKEN" \
-  --slack-user-id "$SLACK_USER_ID" \
-  --user-home "$HOME" \
-  --timezone "America/New_York"
-node scripts/validate.mjs --rendered ./rendered
-node scripts/setup.mjs diff --home ~/.openclaw --rendered ./rendered
-node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes
+```text
+inspect -> render -> validate -> diff -> apply
+```
+
+The current repository still exposes this through the setup scripts. The v1 roadmap will productize it into:
+
+```text
+prodclaw inspect
+prodclaw configure
+prodclaw render
+prodclaw validate
+prodclaw doctor
+prodclaw diff
+prodclaw apply
+prodclaw enable-cron
+prodclaw revert
 ```
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
-## Agent-Led Setup
+## Agent-led setup
 
-If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR_AGENTS.md). The agent must inspect first, render second, validate third, and apply only after explicit approval.
+If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR_AGENTS.md). The agent must inspect first, render second, validate third, diff fourth, and apply only after explicit approval.
 
-## Design Documents
+## Design documents
 
 - [Reference Architecture](docs/REFERENCE_ARCHITECTURE.md)
 - [Existing OpenClaw Migration](docs/EXISTING_OPENCLAW_MIGRATION.md)
@@ -95,6 +109,8 @@ If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR
 - [Operations](docs/OPERATIONS.md)
 - [From-Scratch Setup Deferred](docs/FROM_SCRATCH_DEFERRED.md)
 
-## Safety Boundary
+## Safety boundary
 
 ProdClaw does not manage your memories, sessions, logs, auth profiles, or LanceDB data. It stages only the opinionated harness files: config, workspace instructions, skills, compliance prompts, and cron definitions.
+
+The full v1 safety boundary is tracked in issue #9 and will be expanded into dedicated docs before implementation work proceeds.
