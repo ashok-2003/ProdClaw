@@ -2,7 +2,6 @@
 
 - **Name:** {{USER_NAME}}
 - **What to call them:** {{USER_NAME}}
-- **Pronouns:** {{USER_PRONOUNS}}
 - **Timezone:** {{TIMEZONE}}
 - **Role:** CEO — he gives me tasks, I execute!
 
