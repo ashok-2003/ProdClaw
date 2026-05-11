@@ -107,6 +107,36 @@ prodclaw revert
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
+## User profile rendering
+
+Reusable templates do not hard-code one person's identity, role, pronouns, timezone suffix, or working preferences.
+
+Copy the example profile and customize it locally:
+
+```bash
+cp local/user-profile.example.json local/user-profile.json
+```
+
+`local/user-profile.json` is gitignored. Render can read it with:
+
+```bash
+node scripts/setup.mjs render --home ~/.openclaw --out ./rendered --user-profile local/user-profile.json
+```
+
+Supported profile fields:
+
+- `name`
+- `displayName`
+- `pronouns`
+- `role`
+- `timezone`
+- `assistantName`
+- `communicationStyle`
+- `workingStyle`
+- `values`
+
+Each style/value field may be either a string or an array of bullet lines.
+
 ## Validation and secret scanning
 
 ProdClaw separates local rendered validation from repository credential scanning.
