@@ -107,6 +107,26 @@ prodclaw revert
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
+## Validation and secret scanning
+
+ProdClaw separates local rendered validation from repository credential scanning.
+
+Local rendered validation runs after `render` and before `diff` / `apply`:
+
+```bash
+node scripts/validate.mjs --rendered ./rendered
+```
+
+This validates staged local output. It confirms required files exist, JSON parses, policy checks pass, and placeholders are filled. It allows real credentials because `./rendered` is local-only and git-ignored. It must never print secret values.
+
+Repository credential scanning is for CI and committed files:
+
+```bash
+npm run scan-secrets
+```
+
+This fails if real OpenRouter or Slack credentials are committed to the repo. It allows template placeholders and skips local ignored output such as `./rendered`.
+
 ## Agent-led setup
 
 If an agent is doing the install, start with [INSTALL_FOR_AGENTS.md](INSTALL_FOR_AGENTS.md). The agent must inspect first, render second, validate third, diff fourth, and apply only after explicit approval.

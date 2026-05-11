@@ -100,6 +100,22 @@ prodclaw validate
 
 Validate checks staged files and policy. It must not run external smoke tests. It must not print secrets.
 
+Local rendered validation allows real credentials in the staged rendered directory because that output is local-only and git-ignored. Do not confuse it with repository credential scanning.
+
+For the current script fallback, local rendered validation is:
+
+```bash
+node scripts/validate.mjs --rendered ./rendered
+```
+
+Repository credential scanning is for committed files and CI:
+
+```bash
+npm run scan-secrets
+```
+
+This scan must fail on committed real OpenRouter or Slack credentials, but it should allow template placeholders.
+
 ### 5. Doctor
 
 Run:

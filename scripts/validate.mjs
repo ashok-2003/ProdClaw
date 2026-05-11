@@ -89,6 +89,14 @@ function assert(condition, message) {
   if (!condition) fail(message);
 }
 
+function readJson(file, label) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    fail("Invalid JSON in " + label + ": " + error.message);
+  }
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -97,8 +105,8 @@ for (const rel of requiredFiles) {
   assert(fs.existsSync(path.join(rendered, rel)), "Missing required file: " + rel);
 }
 
-const config = JSON.parse(fs.readFileSync(path.join(rendered, "openclaw.json"), "utf8"));
-const cron = JSON.parse(fs.readFileSync(path.join(rendered, "cron/jobs.json"), "utf8"));
+const config = readJson(path.join(rendered, "openclaw.json"), "openclaw.json");
+const cron = readJson(path.join(rendered, "cron/jobs.json"), "cron/jobs.json");
 
 assert(config.channels?.telegram?.enabled === false, "Telegram must be disabled.");
 assert(config.channels?.slack?.accounts?.default, "Slack default account missing.");
@@ -127,33 +135,31 @@ for (const job of cron.jobs) {
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
 }
 
-const allText = walk(rendered)
+const renderedFiles = walk(rendered);
+const allText = renderedFiles
   .map((file) => fs.readFileSync(file, "utf8"))
   .join("\n");
 
+// Local rendered validation intentionally allows real credentials because ./rendered
+// is local-only and git-ignored. Repository credential scanning belongs in
+// scripts/scan-secrets.mjs.
 const blockedNames = ["as" + "hok", "sha" + "shwat"];
 const blockedHome = new RegExp("/home/" + blockedNames[1], "i");
-const openRouterPrefix = "sk-" + "or-v1-";
-const slackBotPrefix = "xo" + "xb-";
-const slackAppPrefix = "xa" + "pp-";
 const forbidden = [
-  [new RegExp(openRouterPrefix + "[A-Za-z0-9_-]+"), "OpenRouter token pattern"],
-  [new RegExp(slackBotPrefix + "[A-Za-z0-9-]+"), "Slack bot token pattern"],
-  [new RegExp(slackAppPrefix + "[A-Za-z0-9-]+"), "Slack app token pattern"],
   [new RegExp("\\b" + blockedNames[0] + "\\b", "i"), "blocked personal name"],
   [new RegExp("\\b" + blockedNames[1] + "\\b", "i"), "blocked personal name"],
   [blockedHome, "blocked personal absolute path"],
   [/\{\{[A-Z0-9_]+\}\}/, "unreplaced template placeholder"],
-  [/\bOPENROUTER_API_KEY\b/, "missing OpenRouter API key"],
-  [/\bSLACK_BOT_TOKEN\b/, "missing Slack bot token"],
-  [/\bSLACK_APP_TOKEN\b/, "missing Slack app token"],
-  [/\bSLACK_COMPLIANCE_BOT_TOKEN\b/, "missing Slack compliance bot token"],
-  [/\bSLACK_COMPLIANCE_APP_TOKEN\b/, "missing Slack compliance app token"],
-  [/\bSLACK_USER_ID\b/, "missing Slack user ID"],
+  [/\bOPENROUTER_API_KEY\b/, "missing OpenRouter API key (render with --openrouter-api-key or configure it before render)"],
+  [/\bSLACK_BOT_TOKEN\b/, "missing Slack bot token (render with --slack-bot-token if main Slack is enabled)"],
+  [/\bSLACK_APP_TOKEN\b/, "missing Slack app token (render with --slack-app-token if main Slack is enabled)"],
+  [/\bSLACK_COMPLIANCE_BOT_TOKEN\b/, "missing Slack compliance bot token (render with --slack-compliance-bot-token)"],
+  [/\bSLACK_COMPLIANCE_APP_TOKEN\b/, "missing Slack compliance app token (render with --slack-compliance-app-token)"],
+  [/\bSLACK_USER_ID\b/, "missing Slack user ID (render with --slack-user-id)"],
 ];
 
 for (const [pattern, label] of forbidden) {
   assert(!pattern.test(allText), "Forbidden content found: " + label);
 }
 
-console.log("Validation passed.");
+console.log("Rendered validation passed.");
