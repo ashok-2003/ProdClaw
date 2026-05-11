@@ -109,7 +109,7 @@ From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DE
 
 ## User profile rendering
 
-Reusable templates do not hard-code one person's identity, role, pronouns, timezone suffix, or working preferences.
+Reusable templates do not hard-code one person's identity, pronouns, or timezone suffix. The user only needs to provide identity basics.
 
 Copy the example profile and customize it locally:
 
@@ -126,16 +126,10 @@ node scripts/setup.mjs render --home ~/.openclaw --out ./rendered --user-profile
 Supported profile fields:
 
 - `name`
-- `displayName`
 - `pronouns`
-- `role`
 - `timezone`
-- `assistantName`
-- `communicationStyle`
-- `workingStyle`
-- `values`
 
-Each style/value field may be either a string or an array of bullet lines.
+Communication style, working style, values, safety posture, and operating rules remain opinionated ProdClaw harness defaults during initial setup. They are not asked as first-run questions.
 
 ## Validation and secret scanning
 
