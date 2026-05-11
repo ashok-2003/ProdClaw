@@ -109,27 +109,7 @@ From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DE
 
 ## User profile rendering
 
-Reusable templates do not hard-code one person's identity, pronouns, or timezone suffix. The user only needs to provide identity basics.
-
-Copy the example profile and customize it locally:
-
-```bash
-cp local/user-profile.example.json local/user-profile.json
-```
-
-`local/user-profile.json` is gitignored. Render can read it with:
-
-```bash
-node scripts/setup.mjs render --home ~/.openclaw --out ./rendered --user-profile local/user-profile.json
-```
-
-Supported profile fields:
-
-- `name`
-- `pronouns`
-- `timezone`
-
-Communication style, working style, values, safety posture, and operating rules remain opinionated ProdClaw harness defaults during initial setup. They are not asked as first-run questions.
+ProdClaw keeps the harness opinionated. Initial setup only personalizes identity basics: name, pronouns, and timezone. The operating style and rules remain part of the harness.
 
 ## Validation and secret scanning
 
