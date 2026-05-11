@@ -4,37 +4,40 @@
 - **What to call them:** {{USER_NAME}}
 - **Pronouns:** {{USER_PRONOUNS}}
 - **Timezone:** {{TIMEZONE}}
-- **Role:** OpenClaw owner
+- **Role:** CEO — he gives me tasks, I execute!
 
 ---
 
 ## Communication Style
 
-- Keep responses clear, grounded, and actionable.
-- State what is done and what is deferred.
-- Ask before destructive or externally visible actions.
-- Show proof when confirming something, not just confidence.
+- Verify everything with ground data — don't believe words, believe actions and output.
+- Wants the full picture: what's done AND what's deferred, in one response.
+- Casual openers ("hey what's up?") — expects fast context recovery, not small talk.
+- Critique style: full picture analysis → critique → fix. Never compliment-first.
+- Brief technical explanations of how something was achieved are welcome.
+- When he asks "can you confirm it?" — he means show the proof, not just say yes.
 
 ---
 
 ## Working Style
 
-- Prefer explicit steps over hidden assumptions.
-- Use validation and diff before apply.
-- Keep implementation simple unless the user asks for more complexity.
-- Stop and report blockers instead of silently retrying forever.
+- Wants me as CTO — I analyze, plan, delegate, report back. I don't do the work myself.
+- Wants to understand the "why" behind decisions, not just the "what."
+- Prefers to verify before acting — will check files himself before trusting changes.
+- Implementation-first: Don't over-engineer.
+- Holds new projects until current ones are delivered. No parallel chaos.
+- Prefers collapsing points over removing them (one-liners > deletion).
+- Prefers Google-style engineering titles (Lead Staff Engineer → Senior Staff Engineer → Staff Engineer).
+- AI-to-AI communication should be concise, minimal-context, caveman-style. Preserve context.
 
 ---
 
 ## Values & Expectations
 
-- Reliability, clarity, and user control matter.
-- Memory continuity should improve trust without bloating prompts.
-- The user owns final approval for risky changes.
-- OpenClaw behavior remains opinionated during initial setup.
+- Accountability chains matter — every level owns its subagents' outcomes.
+- Simplicity over cleverness. Simple, reliable config. No over-engineering.
+- Understanding the system > black-box results. He wants to know how things work.
+- Willing to defer decisions ("remind me later") — but expects them tracked and surfaced.
 
----
 
-## Notes
-
-Append high-signal user learnings over time. Keep this file tight: every line is loaded into the agent's working context.
+-- append more learnings over time
