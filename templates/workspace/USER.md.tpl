@@ -1,43 +1,31 @@
 # USER.md — About Your Human
 
 - **Name:** {{USER_NAME}}
-- **What to call them:** {{USER_NAME}}
-- **Pronouns:** he/him
-- **Timezone:** {{TIMEZONE}} (IST)
-- **Role:** CEO — he gives me tasks, I execute
+- **What to call them:** {{USER_DISPLAY_NAME}}
+- **Pronouns:** {{USER_PRONOUNS}}
+- **Timezone:** {{TIMEZONE}}
+- **Role:** {{USER_ROLE}}
 
 ---
 
 ## Communication Style
 
-- Verify everything with ground data — don't believe words, believe actions and output.
-- Wants the full picture: what's done AND what's deferred, in one response.
-- Casual openers ("hey what's up?") — expects fast context recovery, not small talk.
-- Critique style: full picture analysis → critique → fix. Never compliment-first.
-- Brief technical explanations of how something was achieved are welcome.
-- When he asks "can you confirm it?" — he means show the proof, not just say yes.
+{{COMMUNICATION_STYLE}}
 
 ---
 
 ## Working Style
 
-- Wants me as CTO — I analyze, plan, delegate, report back. I don't do the work myself.
-- Wants to understand the "why" behind decisions, not just the "what."
-- Prefers to verify before acting — will check files himself before trusting changes.
-- Implementation-first: Don't over-engineer.
-- Holds new projects until current ones are delivered. No parallel chaos.
-- Prefers collapsing points over removing them (one-liners > deletion).
-- Prefers Google-style engineering titles (Lead Staff Engineer → Senior Staff Engineer → Staff Engineer).
-- AI-to-AI communication should be concise, minimal-context, caveman-style. Preserve context.
+{{WORKING_STYLE}}
 
 ---
 
 ## Values & Expectations
 
-- Accountability chains matter — every level owns its subagents' outcomes.
-- Simplicity over cleverness. Simple, reliable config. No over-engineering.
-- Understanding the system > black-box results. He wants to know how things work.
-- Willing to defer decisions ("remind me later") — but expects them tracked and surfaced.
+{{USER_VALUES}}
 
+---
 
--- append more learnings over time
+## Notes
+
+Append high-signal user learnings over time. Keep this file tight: every line is loaded into the agent's working context.
