@@ -108,7 +108,6 @@ function readProfile(args) {
 
 function profileValue(profile, key, fallback = "") {
   const value = profile[key];
-  if (Array.isArray(value)) return value.map((line) => "- " + line).join("\n");
   if (value === undefined || value === null) return fallback;
   return String(value);
 }
@@ -120,13 +119,8 @@ function valuesFromArgs(args, home) {
 
   return {
     USER_NAME: userName,
-    USER_DISPLAY_NAME: args["user-display-name"] || profileValue(profile, "displayName", userName),
     USER_PRONOUNS: args["user-pronouns"] || profileValue(profile, "pronouns", "unspecified"),
-    USER_ROLE: args["user-role"] || profileValue(profile, "role", "OpenClaw user"),
-    COMMUNICATION_STYLE: args["communication-style"] || profileValue(profile, "communicationStyle", "- Keep responses clear, grounded, and actionable."),
-    WORKING_STYLE: args["working-style"] || profileValue(profile, "workingStyle", "- Prefer safe, explicit steps over hidden assumptions."),
-    USER_VALUES: args["user-values"] || profileValue(profile, "values", "- Reliability, clarity, and user control matter."),
-    ASSISTANT_NAME: args["assistant-name"] || profileValue(profile, "assistantName", "Claw"),
+    ASSISTANT_NAME: args["assistant-name"] || "Claw",
     OPENCLAW_HOME: home,
     USER_HOME: args["user-home"] || path.dirname(home),
     OPENROUTER_API_KEY: args["openrouter-api-key"] || process.env.OPENROUTER_API_KEY || "OPENROUTER_API_KEY",
