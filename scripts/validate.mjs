@@ -62,6 +62,23 @@ const requiredFiles = [
   "workspace-consultant/skills/council/roles.json",
 ];
 
+const cronRuntimeKeys = new Set([
+  "state",
+  "runHistory",
+  "lastRun",
+  "nextRun",
+  "lastRunAt",
+  "nextRunAt",
+  "lastRunAtMs",
+  "nextRunAtMs",
+  "lastRunStatus",
+  "lastStatus",
+  "lastDurationMs",
+  "lastDeliveryStatus",
+  "lastError",
+  "consecutiveErrors",
+]);
+
 function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
@@ -97,6 +114,20 @@ function readJson(file, label) {
   }
 }
 
+function assertNoCronRuntimeState(value, trail = "cron") {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoCronRuntimeState(item, trail + "[" + index + "]"));
+    return;
+  }
+
+  if (!value || typeof value !== "object") return;
+
+  for (const [key, child] of Object.entries(value)) {
+    assert(!cronRuntimeKeys.has(key), "Cron template contains runtime-only key at " + trail + "." + key);
+    assertNoCronRuntimeState(child, trail + "." + key);
+  }
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -125,6 +156,7 @@ for (const plugin of requiredPlugins) {
 
 assert(Array.isArray(cron.jobs), "cron/jobs.json must contain jobs array.");
 assert(cron.jobs.length >= 10, "Expected compliance cron jobs to be present.");
+assertNoCronRuntimeState(cron);
 
 for (const job of cron.jobs) {
   assert(job.enabled === true, "Cron job must be enabled: " + job.name);
