@@ -1,1 +1,316 @@
-{"version":1,"jobs":[{"id":"61df150d-621f-4ced-842d-1ef04f31d50b","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-subagent-audit","description":"Daily subagent session audit","enabled":true,"schedule":{"kind":"cron","expr":"0 9 * * 1-5","tz":"{{TIMEZONE}}","staggerMs":240000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/subagent-audit.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":900,"toolsAllow":["sessions_list","read","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"6f05e8d3-f9ba-4f69-ba32-afdbbc5d27c1","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-model-audit","description":"Daily model audit","enabled":true,"schedule":{"kind":"cron","expr":"0 9 * * 1-5","tz":"{{TIMEZONE}}","staggerMs":300000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/model-audit.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":420,"toolsAllow":["exec","read","sessions_list","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"38bca093-0f37-4cad-9b6f-348c8a550435","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-retention-suggest","description":"Twice-weekly retention pruning suggestions","enabled":true,"schedule":{"kind":"cron","expr":"0 10 * * 1,4","tz":"{{TIMEZONE}}","staggerMs":60000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/retention-suggest.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. NEVER delete anything. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":900,"toolsAllow":["memory_recall","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"faee7a86-c6f3-45b4-a005-730288cd2665","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-backup","description":"Twice-weekly backup","enabled":true,"schedule":{"kind":"cron","expr":"0 10 * * 1,4","tz":"{{TIMEZONE}}","staggerMs":180000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/backup.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":420,"toolsAllow":["exec","read","write","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"36656a2a-7165-4470-b484-a2042a1bdabf","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-market-scan","description":"Weekly OpenRouter market scan","enabled":true,"schedule":{"kind":"cron","expr":"0 8 * * 0","tz":"{{TIMEZONE}}"},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/market-scan.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Only report models with verified evidence. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":900,"toolsAllow":["web_search","web_fetch","memory_recall","memory_store","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"0b986924-d549-4685-a2d6-8dcdaf4470a0","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-memory-health","description":"Daily LanceDB memory health check","enabled":true,"schedule":{"kind":"cron","expr":"0 9 * * 1-5","tz":"{{TIMEZONE}}","staggerMs":60000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/memory-health.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":420,"toolsAllow":["memory_recall","exec","read","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"78ebb703-12d0-4344-9175-8688e2d5077f","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-cron-health","description":"Daily cron health check","enabled":true,"schedule":{"kind":"cron","expr":"0 9 * * 1-5","tz":"{{TIMEZONE}}","staggerMs":120000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/cron-health.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":120,"toolsAllow":["read","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"fe204312-14a1-4cc9-92f1-c1eaa3831cef","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-disk-check","description":"Daily disk usage check","enabled":true,"schedule":{"kind":"cron","expr":"0 9 * * 1-5","tz":"{{TIMEZONE}}","staggerMs":180000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/disk-check.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":120,"toolsAllow":["exec","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"5ff878b0-f5a9-45c2-a92f-c58637c78f29","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-harness-audit-main","description":"Weekly harness audit for main","enabled":true,"schedule":{"kind":"cron","expr":"0 10 * * 1","tz":"{{TIMEZONE}}","staggerMs":120000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/harness-audit-main.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":900,"toolsAllow":["exec","read","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}},{"id":"a47f1823-a6bf-4eb6-9deb-6e461b6aa5e6","agentId":"compliance","sessionKey":"agent:main:main","name":"compliance-harness-audit-consultant","description":"Weekly harness audit for consultant","enabled":true,"schedule":{"kind":"cron","expr":"0 10 * * 1","tz":"{{TIMEZONE}}","staggerMs":240000},"sessionTarget":"isolated","wakeMode":"now","payload":{"kind":"agentTurn","message":"Read: {{OPENCLAW_HOME}}/compliance/prompts/harness-audit-consultant.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.","model":"openrouter/xiaomi/mimo-v2.5-pro","timeoutSeconds":900,"toolsAllow":["exec","read","message"],"fallbacks":["openrouter/moonshotai/kimi-k2.6","openrouter/z-ai/glm-5.1"]}}]}
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "61df150d-621f-4ced-842d-1ef04f31d50b",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-subagent-audit",
+      "description": "Daily subagent session audit",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 240000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/subagent-audit.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 900,
+        "toolsAllow": [
+          "sessions_list",
+          "read",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "6f05e8d3-f9ba-4f69-ba32-afdbbc5d27c1",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-model-audit",
+      "description": "Daily model audit",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 300000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/model-audit.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 420,
+        "toolsAllow": [
+          "exec",
+          "read",
+          "sessions_list",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "38bca093-0f37-4cad-9b6f-348c8a550435",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-retention-suggest",
+      "description": "Twice-weekly retention pruning suggestions",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 10 * * 1,4",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 60000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/retention-suggest.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. NEVER delete anything. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 900,
+        "toolsAllow": [
+          "memory_recall",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "faee7a86-c6f3-45b4-a005-730288cd2665",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-backup",
+      "description": "Twice-weekly backup",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 10 * * 1,4",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 180000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/backup.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 420,
+        "toolsAllow": [
+          "exec",
+          "read",
+          "write",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "36656a2a-7165-4470-b484-a2042a1bdabf",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-market-scan",
+      "description": "Weekly OpenRouter market scan",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * 0",
+        "tz": "{{TIMEZONE}}"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/market-scan.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Only report models with verified evidence. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 900,
+        "toolsAllow": [
+          "web_search",
+          "web_fetch",
+          "memory_recall",
+          "memory_store",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "0b986924-d549-4685-a2d6-8dcdaf4470a0",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-memory-health",
+      "description": "Daily LanceDB memory health check",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 60000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/memory-health.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 420,
+        "toolsAllow": [
+          "memory_recall",
+          "exec",
+          "read",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "78ebb703-12d0-4344-9175-8688e2d5077f",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-cron-health",
+      "description": "Daily cron health check",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 120000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/cron-health.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 120,
+        "toolsAllow": [
+          "read",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "fe204312-14a1-4cc9-92f1-c1eaa3831cef",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-disk-check",
+      "description": "Daily disk usage check",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 1-5",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 180000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/disk-check.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 120,
+        "toolsAllow": [
+          "exec",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "5ff878b0-f5a9-45c2-a92f-c58637c78f29",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-harness-audit-main",
+      "description": "Weekly harness audit for main",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 10 * * 1",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 120000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/harness-audit-main.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 900,
+        "toolsAllow": [
+          "exec",
+          "read",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    },
+    {
+      "id": "a47f1823-a6bf-4eb6-9deb-6e461b6aa5e6",
+      "agentId": "compliance",
+      "sessionKey": "agent:main:main",
+      "name": "compliance-harness-audit-consultant",
+      "description": "Weekly harness audit for consultant",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 10 * * 1",
+        "tz": "{{TIMEZONE}}",
+        "staggerMs": 240000
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Read: {{OPENCLAW_HOME}}/compliance/prompts/harness-audit-consultant.md\nExecute all checks described there.\n\nRULES: NEVER infer, NEVER assume, NEVER fill gaps. Every claim needs data source. Plain text output only -- no JSON.\n\nDELIVERY: Send final output via message tool using channel=slack, accountId=compliance, userId={{SLACK_USER_ID}}.",
+        "model": "openrouter/xiaomi/mimo-v2.5-pro",
+        "timeoutSeconds": 900,
+        "toolsAllow": [
+          "exec",
+          "read",
+          "message"
+        ],
+        "fallbacks": [
+          "openrouter/moonshotai/kimi-k2.6",
+          "openrouter/z-ai/glm-5.1"
+        ]
+      }
+    }
+  ]
+}
