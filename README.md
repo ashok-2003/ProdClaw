@@ -109,7 +109,7 @@ From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DE
 
 ## User profile rendering
 
-ProdClaw keeps the harness opinionated. Initial setup only personalizes identity basics: name, pronouns, and timezone. The operating style and rules remain part of the harness.
+ProdClaw keeps the harness opinionated. Initial setup only personalizes the user's name and timezone. The operating style, role framing, and rules remain part of the harness.
 
 ## Validation and secret scanning
 
