@@ -1,23 +1,5 @@
 {
   "name": "OpenClaw Owner",
-  "displayName": "Owner",
   "pronouns": "unspecified",
-  "role": "OpenClaw user",
-  "timezone": "UTC",
-  "assistantName": "Claw",
-  "communicationStyle": [
-    "Keep responses clear, grounded, and actionable.",
-    "State what is done and what is deferred.",
-    "Ask before destructive or externally visible actions."
-  ],
-  "workingStyle": [
-    "Prefer explicit steps over hidden assumptions.",
-    "Use validation and diff before apply.",
-    "Keep implementation simple unless the user asks for more complexity."
-  ],
-  "values": [
-    "Reliability, clarity, and user control matter.",
-    "Memory continuity should improve trust without bloating prompts.",
-    "The user owns final approval for risky changes."
-  ]
+  "timezone": "UTC"
 }
