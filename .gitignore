@@ -4,6 +4,11 @@ rendered/
 .env.*
 !.env.example
 
+# Local user profiles
+local/user-profile.json
+local/*.local.json
+!local/user-profile.example.json
+
 # OpenClaw runtime state
 memory/
 memory-md/
