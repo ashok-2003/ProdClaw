@@ -119,7 +119,6 @@ function valuesFromArgs(args, home) {
 
   return {
     USER_NAME: userName,
-    USER_PRONOUNS: args["user-pronouns"] || profileValue(profile, "pronouns", "unspecified"),
     ASSISTANT_NAME: args["assistant-name"] || "Claw",
     OPENCLAW_HOME: home,
     USER_HOME: args["user-home"] || path.dirname(home),
