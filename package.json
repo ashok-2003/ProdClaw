@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "prodclaw": "./bin/prodclaw.mjs"
+  },
   "scripts": {
+    "prodclaw": "node bin/prodclaw.mjs",
     "validate": "node scripts/validate.mjs --rendered ./rendered",
     "scan-secrets": "node scripts/scan-secrets.mjs --path .",
     "inspect": "node scripts/setup.mjs inspect --home ~/.openclaw"
