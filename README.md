@@ -87,11 +87,16 @@ The design goal is simple: keep the harness thin, keep skills fat, and keep recu
 
 Primary path: existing OpenClaw users.
 
-```text
-inspect -> render -> validate -> diff -> apply
+```bash
+npm run prodclaw -- help
+npm run prodclaw -- inspect --home ~/.openclaw
+npm run prodclaw -- render --home ~/.openclaw --out ./rendered
+npm run prodclaw -- validate --rendered ./rendered
+npm run prodclaw -- diff --home ~/.openclaw --rendered ./rendered
+npm run prodclaw -- apply --home ~/.openclaw --rendered ./rendered --yes
 ```
 
-The current repository still exposes this through the setup scripts. The v1 roadmap will productize it into:
+The v1 command surface is:
 
 ```text
 prodclaw inspect
@@ -104,6 +109,8 @@ prodclaw apply
 prodclaw enable-cron
 prodclaw revert
 ```
+
+Some commands are intentionally exposed before their full implementation so humans and agents can follow one stable flow while later issues fill in runtime detection, doctor checks, cron enablement, and managed-file revert.
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
@@ -118,7 +125,7 @@ ProdClaw separates local rendered validation from repository credential scanning
 Local rendered validation runs after `render` and before `diff` / `apply`:
 
 ```bash
-node scripts/validate.mjs --rendered ./rendered
+npm run prodclaw -- validate --rendered ./rendered
 ```
 
 This validates staged local output. It confirms required files exist, JSON parses, policy checks pass, and placeholders are filled. It allows real credentials because `./rendered` is local-only and git-ignored. It must never print secret values.
