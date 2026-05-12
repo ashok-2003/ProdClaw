@@ -87,11 +87,16 @@ The design goal is simple: keep the harness thin, keep skills fat, and keep recu
 
 Primary path: existing OpenClaw users.
 
-```text
-inspect -> render -> validate -> diff -> apply
+```bash
+npm run prodclaw -- help
+npm run prodclaw -- inspect --home ~/.openclaw
+npm run prodclaw -- render --home ~/.openclaw --out ./rendered
+npm run prodclaw -- validate --rendered ./rendered
+npm run prodclaw -- diff --home ~/.openclaw --rendered ./rendered
+npm run prodclaw -- apply --home ~/.openclaw --rendered ./rendered --yes
 ```
 
-The current repository still exposes this through the setup scripts. The v1 roadmap will productize it into:
+The v1 command surface is:
 
 ```text
 prodclaw inspect
@@ -111,25 +116,19 @@ From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DE
 
 ProdClaw keeps the harness opinionated. Initial setup only personalizes the user's name and timezone. The operating style, role framing, and rules remain part of the harness.
 
-## Validation and secret scanning
+## Validation
 
-ProdClaw separates local rendered validation from repository credential scanning.
-
-Local rendered validation runs after `render` and before `diff` / `apply`:
+For staged output checks, run:
 
 ```bash
-node scripts/validate.mjs --rendered ./rendered
+npm run prodclaw -- validate --rendered ./rendered
 ```
 
-This validates staged local output. It confirms required files exist, JSON parses, policy checks pass, and placeholders are filled. It allows real credentials because `./rendered` is local-only and git-ignored. It must never print secret values.
-
-Repository credential scanning is for CI and committed files:
+For repository hygiene checks, run:
 
 ```bash
 npm run scan-secrets
 ```
-
-This fails if real OpenRouter or Slack credentials are committed to the repo. It allows template placeholders and skips local ignored output such as `./rendered`.
 
 ## Agent-led setup
 
