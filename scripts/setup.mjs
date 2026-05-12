@@ -92,9 +92,33 @@ function defaultTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || process.env.TZ || "UTC";
 }
 
+function readProfile(args) {
+  const profilePath = args["user-profile"] || args.profile;
+  if (!profilePath) return {};
+
+  const resolved = path.resolve(expandHome(profilePath));
+  if (!fs.existsSync(resolved)) throw new Error("User profile file not found: " + resolved);
+
+  try {
+    return JSON.parse(fs.readFileSync(resolved, "utf8"));
+  } catch (error) {
+    throw new Error("Invalid user profile JSON: " + resolved + ": " + error.message);
+  }
+}
+
+function profileValue(profile, key, fallback = "") {
+  const value = profile[key];
+  if (value === undefined || value === null) return fallback;
+  return String(value);
+}
+
 function valuesFromArgs(args, home) {
+  const profile = readProfile(args);
+  const userName = args["user-name"] || profileValue(profile, "name", "OpenClaw Owner");
+  const timezone = args.timezone || profileValue(profile, "timezone", defaultTimezone());
+
   return {
-    USER_NAME: args["user-name"] || "OpenClaw Owner",
+    USER_NAME: userName,
     ASSISTANT_NAME: args["assistant-name"] || "Claw",
     OPENCLAW_HOME: home,
     USER_HOME: args["user-home"] || path.dirname(home),
@@ -104,7 +128,7 @@ function valuesFromArgs(args, home) {
     SLACK_COMPLIANCE_BOT_TOKEN: args["slack-compliance-bot-token"] || process.env.SLACK_COMPLIANCE_BOT_TOKEN || "SLACK_COMPLIANCE_BOT_TOKEN",
     SLACK_COMPLIANCE_APP_TOKEN: args["slack-compliance-app-token"] || process.env.SLACK_COMPLIANCE_APP_TOKEN || "SLACK_COMPLIANCE_APP_TOKEN",
     SLACK_USER_ID: args["slack-user-id"] || process.env.SLACK_USER_ID || "SLACK_USER_ID",
-    TIMEZONE: args.timezone || defaultTimezone(),
+    TIMEZONE: timezone,
     GATEWAY_AUTH_TOKEN: args["gateway-auth-token"] || randomBytes(24).toString("hex"),
   };
 }
@@ -204,7 +228,7 @@ function apply(args, home) {
 function usage() {
   console.log("Usage:");
   console.log("  node scripts/setup.mjs inspect --home ~/.openclaw");
-  console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...]");
+  console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...] [--user-profile local/user-profile.json]");
   console.log("  node scripts/setup.mjs diff --home ~/.openclaw --rendered ./rendered");
   console.log("  node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes");
 }

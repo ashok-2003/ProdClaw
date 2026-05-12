@@ -107,6 +107,10 @@ prodclaw revert
 
 From-scratch OpenClaw setup is intentionally deferred. See [docs/FROM_SCRATCH_DEFERRED.md](docs/FROM_SCRATCH_DEFERRED.md).
 
+## User profile rendering
+
+ProdClaw keeps the harness opinionated. Initial setup only personalizes the user's name and timezone. The operating style, role framing, and rules remain part of the harness.
+
 ## Validation and secret scanning
 
 ProdClaw separates local rendered validation from repository credential scanning.
