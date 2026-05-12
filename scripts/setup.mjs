@@ -17,8 +17,8 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (key === "yes") {
-      out.yes = true;
+    if (key === "yes" || key === "json") {
+      out[key] = true;
       continue;
     }
     out[key] = argv[++i];
@@ -49,6 +49,7 @@ function redact(text) {
 
 function walk(dir) {
   const files = [];
+  if (!fs.existsSync(dir)) return files;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...walk(full));
@@ -106,6 +107,15 @@ function readProfile(args) {
   }
 }
 
+function readJsonIfExists(file) {
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function profileValue(profile, key, fallback = "") {
   const value = profile[key];
   if (value === undefined || value === null) return fallback;
@@ -143,28 +153,190 @@ function copyManagedFiles(rendered, home) {
   }
 }
 
-function inspect(home) {
-  if (!fs.existsSync(home)) throw new Error("OpenClaw home not found: " + home);
-  console.log("OPENCLAW_HOME: " + home);
+function pathExists(file) {
+  return fs.existsSync(file);
+}
+
+function detectHome(args) {
+  const candidates = [];
+  if (args.home) candidates.push({ source: "--home", value: path.resolve(expandHome(args.home)) });
+  if (process.env.OPENCLAW_HOME) candidates.push({ source: "OPENCLAW_HOME", value: path.resolve(expandHome(process.env.OPENCLAW_HOME)) });
+  candidates.push({ source: "default", value: path.join(os.homedir(), ".openclaw") });
+
+  const found = candidates.find((candidate) => pathExists(candidate.value));
+  return found ?? candidates[0];
+}
+
+function findFirstJson(home, names) {
+  for (const name of names) {
+    const file = path.join(home, name);
+    const parsed = readJsonIfExists(file);
+    if (parsed) return { file, parsed };
+  }
+  return null;
+}
+
+function detectOpenClawVersion(home) {
+  const pkg = findFirstJson(home, ["package.json", "openclaw/package.json"]);
+  if (pkg?.parsed?.version) return pkg.parsed.version;
+
+  const result = run("openclaw", ["--version"], { env: { ...process.env, OPENCLAW_HOME: home } });
+  if (result.status === 0 && result.stdout.trim()) return result.stdout.trim().split("\n")[0];
+  return null;
+}
+
+function detectState(args) {
+  const homeCandidate = detectHome(args);
+  const home = homeCandidate.value;
+  const configHit = findFirstJson(home, ["openclaw.json", "config.json"]);
+  const config = configHit?.parsed ?? {};
+  const entries = config.plugins?.entries ?? {};
+  const slackAccounts = config.channels?.slack?.accounts ?? {};
+  const cronFile = path.join(home, "cron", "jobs.json");
+  const cron = readJsonIfExists(cronFile);
+  const skillsDir = path.join(home, "skills");
+  const customSkills = pathExists(skillsDir)
+    ? fs.readdirSync(skillsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+    : [];
+
+  const openRouterConfigured = Boolean(
+    process.env.OPENROUTER_API_KEY ||
+    config.openrouter?.apiKey ||
+    config.providers?.openrouter?.apiKey ||
+    config.models?.openrouter?.apiKey
+  );
+
+  const memoryEntry = entries["memory-lancedb-pro"];
+  const memorySlot = config.plugins?.slots?.memory;
+
+  return {
+    home,
+    homeSource: homeCandidate.source,
+    homeExists: pathExists(home),
+    timezone: args.timezone || defaultTimezone(),
+    configPath: configHit?.file ?? null,
+    config,
+    version: pathExists(home) ? detectOpenClawVersion(home) : null,
+    openRouterConfigured,
+    slackConfigured: Boolean(config.channels?.slack),
+    complianceSlackConfigured: Boolean(slackAccounts.compliance),
+    mainSlackConfigured: Boolean(slackAccounts.default),
+    slackUserIdDetected: Boolean(config.channels?.slack?.target || config.owner?.slackUserId || process.env.SLACK_USER_ID),
+    lancedbInstalled: Boolean(memoryEntry),
+    lancedbEnabled: memorySlot === "memory-lancedb-pro" || memoryEntry?.enabled === true,
+    cronFile,
+    cronFound: Boolean(cron),
+    prodclawCronCount: Array.isArray(cron?.jobs)
+      ? cron.jobs.filter((job) => String(job.name ?? "").startsWith("compliance-")).length
+      : 0,
+    customSkills,
+    gatewayStatus: run("openclaw", ["status"], { env: { ...process.env, OPENCLAW_HOME: home } }),
+  };
+}
+
+function line(status, message) {
+  console.log(status.padEnd(7) + message);
+}
+
+function printInspect(state) {
+  console.log("ProdClaw Inspect");
   console.log("");
 
-  const checks = [
-    ["openclaw", ["config", "validate"]],
-    ["openclaw", ["plugins", "list", "--enabled", "--verbose"]],
-    ["openclaw", ["hooks", "list"]],
-  ];
+  console.log("OpenClaw");
+  if (state.homeExists) line("READY", "Found existing OpenClaw home: " + state.home + " (" + state.homeSource + ")");
+  else line("BROKEN", "OpenClaw home not found: " + state.home + " (" + state.homeSource + ")");
+  if (state.version) line("READY", "OpenClaw version: " + state.version);
+  else line("WARN", "OpenClaw version not detected");
+  if (state.configPath) line("READY", "Config found: " + state.configPath);
+  else line("WARN", "OpenClaw config not found");
+  console.log("");
 
-  for (const [cmd, cmdArgs] of checks) {
-    console.log("$ " + cmd + " " + cmdArgs.join(" "));
-    const result = run(cmd, cmdArgs, {
-      cwd: home,
-      env: { ...process.env, OPENCLAW_HOME: home },
-    });
-    if (result.stdout.trim()) console.log(result.stdout.trim());
-    if (result.stderr.trim()) console.error(result.stderr.trim());
-    console.log("exit: " + result.status);
-    console.log("");
+  console.log("Timezone");
+  line("READY", "Detected timezone: " + state.timezone);
+  console.log("");
+
+  console.log("OpenRouter");
+  if (state.openRouterConfigured) line("READY", "Existing OpenRouter config found");
+  else line("WARN", "OpenRouter API key not detected; configure will ask");
+  console.log("");
+
+  console.log("Slack");
+  if (state.complianceSlackConfigured) line("READY", "Existing compliance Slack account found");
+  else line("WARN", "Compliance Slack account not detected; configure will ask");
+  if (state.mainSlackConfigured) line("READY", "Existing main Slack account found");
+  else line("WARN", "Main Slack account not configured; optional");
+  if (state.slackUserIdDetected) line("READY", "Slack member ID detected");
+  else line("WARN", "Slack member ID not detected; configure will ask");
+  console.log("");
+
+  console.log("LanceDB Pro");
+  if (state.lancedbInstalled) line("READY", "memory-lancedb-pro entry found");
+  else line("BROKEN", "memory-lancedb-pro entry not detected");
+  if (state.lancedbEnabled) line("READY", "LanceDB Pro memory appears enabled or bound");
+  else line("WARN", "LanceDB Pro memory slot not detected");
+  console.log("");
+
+  console.log("Cron");
+  if (state.cronFound) line("READY", "Existing cron config found: " + state.cronFile);
+  else line("WARN", "Cron config not found");
+  if (state.prodclawCronCount > 0) line("READY", "ProdClaw/compliance cron jobs detected: " + state.prodclawCronCount);
+  else line("WARN", "ProdClaw cron jobs not installed yet");
+  console.log("");
+
+  console.log("Skills");
+  if (state.customSkills.length > 0) line("READY", "Skills found: " + state.customSkills.length);
+  else line("WARN", "No skills directory or skills detected");
+  console.log("");
+
+  console.log("Gateway");
+  if (state.gatewayStatus.status === 0) line("READY", "OpenClaw status command succeeded");
+  else line("WARN", "Gateway status not detected; doctor will own runtime checks");
+}
+
+function missingConfigureInputs(state) {
+  const missing = [];
+  missing.push({ key: "owner name", required: true, reason: "always confirm during configure unless supplied by profile/flag" });
+  if (!state.openRouterConfigured) missing.push({ key: "OpenRouter API key", required: true, reason: "not detected" });
+  if (!state.complianceSlackConfigured) {
+    missing.push({ key: "compliance Slack app token", required: true, reason: "compliance Slack account not detected" });
+    missing.push({ key: "compliance Slack bot token", required: true, reason: "compliance Slack account not detected" });
   }
+  if (!state.slackUserIdDetected) missing.push({ key: "compliance Slack member ID", required: true, reason: "not detected" });
+  if (!state.lancedbInstalled || !state.lancedbEnabled) missing.push({ key: "LanceDB Pro setup", required: true, reason: "not fully detected" });
+  if (!state.mainSlackConfigured) missing.push({ key: "main Slack tokens", required: false, reason: "optional main Slack interaction not detected" });
+  return missing;
+}
+
+function configure(args) {
+  const state = detectState(args);
+  const missing = missingConfigureInputs(state);
+
+  console.log("ProdClaw Configure");
+  console.log("");
+  console.log("Detected");
+  line(state.homeExists ? "READY" : "BROKEN", "OpenClaw home: " + state.home);
+  line("READY", "Timezone: " + state.timezone);
+  line(state.openRouterConfigured ? "READY" : "WARN", "OpenRouter: " + (state.openRouterConfigured ? "detected" : "missing"));
+  line(state.complianceSlackConfigured ? "READY" : "WARN", "Compliance Slack: " + (state.complianceSlackConfigured ? "detected" : "missing"));
+  line(state.mainSlackConfigured ? "READY" : "WARN", "Main Slack: " + (state.mainSlackConfigured ? "detected" : "optional / missing"));
+  line(state.lancedbEnabled ? "READY" : "BROKEN", "LanceDB Pro: " + (state.lancedbEnabled ? "detected" : "missing or not bound"));
+  console.log("");
+
+  console.log("Inputs still needed");
+  for (const item of missing) {
+    const status = item.required ? "BROKEN" : "WARN";
+    line(status, item.key + " - " + item.reason);
+  }
+  console.log("");
+
+  console.log("Configure is non-destructive in this pass. It does not write to the live OpenClaw home.");
+  console.log("Use render flags or local/user-profile.json for missing values until interactive configure lands.");
+}
+
+function inspect(args) {
+  const state = detectState(args);
+  if (args.json) console.log(JSON.stringify({ ...state, gatewayStatus: undefined }, null, 2));
+  else printInspect(state);
 }
 
 function render(args, home) {
@@ -227,7 +399,8 @@ function apply(args, home) {
 
 function usage() {
   console.log("Usage:");
-  console.log("  node scripts/setup.mjs inspect --home ~/.openclaw");
+  console.log("  node scripts/setup.mjs inspect [--home ~/.openclaw] [--json]");
+  console.log("  node scripts/setup.mjs configure [--home ~/.openclaw]");
   console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...] [--user-profile local/user-profile.json]");
   console.log("  node scripts/setup.mjs diff --home ~/.openclaw --rendered ./rendered");
   console.log("  node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes");
@@ -236,9 +409,11 @@ function usage() {
 try {
   const args = parseArgs(process.argv.slice(2));
   const command = args._[0];
-  const home = path.resolve(expandHome(args.home || process.env.OPENCLAW_HOME || "~/.openclaw"));
+  const detectedHome = detectHome(args).value;
+  const home = path.resolve(expandHome(args.home || process.env.OPENCLAW_HOME || detectedHome));
 
-  if (command === "inspect") inspect(home);
+  if (command === "inspect") inspect(args);
+  else if (command === "configure") configure(args);
   else if (command === "render") render(args, home);
   else if (command === "diff") diff(args, home);
   else if (command === "apply") apply(args, home);
