@@ -22,10 +22,12 @@ ProdClaw v1 requires:
 
 - an existing OpenClaw installation;
 - OpenRouter for model routing;
-- LanceDB Pro for memory;
+- LanceDB Pro for durable semantic memory;
 - a compliance Slack app for audit delivery.
 
 A main Slack app is optional. You can skip it if you prefer to interact through your existing OpenClaw dashboard/local UI.
+
+If LanceDB Pro is already installed and healthy, ProdClaw keeps it and preserves existing data. If it is missing, disabled, or not bound as the memory slot, ProdClaw should stop and ask for an approved install/enable/bind path before apply or cron enablement.
 
 ProdClaw does not require a separate database server. OpenClaw runtime storage and LanceDB Pro memory are local/embedded storage concerns.
 
