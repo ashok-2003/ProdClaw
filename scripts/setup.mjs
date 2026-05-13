@@ -17,7 +17,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (key === "yes" || key === "json") {
+    if (key === "yes" || key === "json" || key === "enable-main-slack") {
       out[key] = true;
       continue;
     }
@@ -339,6 +339,45 @@ function inspect(args) {
   else printInspect(state);
 }
 
+function shouldRenderMainSlack(args) {
+  const hasMainAppToken = Boolean(args["slack-app-token"] || process.env.SLACK_APP_TOKEN);
+  const hasMainBotToken = Boolean(args["slack-bot-token"] || process.env.SLACK_BOT_TOKEN);
+  if (args["enable-main-slack"] && (!hasMainAppToken || !hasMainBotToken)) {
+    throw new Error("--enable-main-slack requires --slack-app-token and --slack-bot-token, or matching environment variables.");
+  }
+  return args["enable-main-slack"] || (hasMainAppToken && hasMainBotToken);
+}
+
+function addMainSlackAccount(config, values) {
+  config.channels.slack.appToken = values.SLACK_APP_TOKEN;
+  config.channels.slack.botToken = values.SLACK_BOT_TOKEN;
+  config.channels.slack.groupPolicy = "open";
+  config.channels.slack.capabilities = { interactiveReplies: true };
+  config.channels.slack.accounts.default = {
+    enabled: true,
+    mode: "socket",
+    appToken: values.SLACK_APP_TOKEN,
+    botToken: values.SLACK_BOT_TOKEN,
+    userTokenReadOnly: true,
+    nativeStreaming: true,
+    streaming: "partial",
+  };
+  config.bindings.unshift({
+    match: {
+      channel: "slack",
+      accountId: "default",
+    },
+    agentId: "main",
+  });
+}
+
+function postProcessRenderedFile(rel, rendered, args, values) {
+  if (rel !== "openclaw.json") return rendered;
+  const config = JSON.parse(rendered);
+  if (shouldRenderMainSlack(args)) addMainSlackAccount(config, values);
+  return JSON.stringify(config, null, 2) + "\n";
+}
+
 function render(args, home) {
   const out = path.resolve(args.out || "./rendered");
   if (fs.existsSync(out)) {
@@ -348,7 +387,12 @@ function render(args, home) {
   const values = valuesFromArgs(args, home);
   for (const rel of managedFiles()) {
     const template = path.join(templatesRoot, rel + ".tpl");
-    const rendered = renderTemplate(fs.readFileSync(template, "utf8"), values);
+    const rendered = postProcessRenderedFile(
+      rel,
+      renderTemplate(fs.readFileSync(template, "utf8"), values),
+      args,
+      values,
+    );
     const dst = path.join(out, rel);
     ensureDir(path.dirname(dst));
     fs.writeFileSync(dst, rendered);
@@ -402,6 +446,7 @@ function usage() {
   console.log("  node scripts/setup.mjs inspect [--home ~/.openclaw] [--json]");
   console.log("  node scripts/setup.mjs configure [--home ~/.openclaw]");
   console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...] [--user-profile local/user-profile.json]");
+  console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered --enable-main-slack --slack-app-token <token> --slack-bot-token <token>");
   console.log("  node scripts/setup.mjs diff --home ~/.openclaw --rendered ./rendered");
   console.log("  node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes");
 }
