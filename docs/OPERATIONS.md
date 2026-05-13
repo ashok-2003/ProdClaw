@@ -43,6 +43,28 @@ Deferred work:
 - managed-file rollback, which belongs to `prodclaw revert`;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
+## Slack Policy
+
+Compliance Slack is required in v1 because compliance reports need a reliable production delivery path.
+
+Main Slack is optional. Users may skip the main/default Slack account and continue using their existing OpenClaw dashboard or local UI for owner-facing interaction.
+
+Current implementation scope:
+
+- rendered config includes the compliance Slack account by default;
+- rendered config omits the main/default Slack account by default;
+- validation requires compliance Slack;
+- validation allows main/default Slack to be absent;
+- validation checks main/default Slack only when it is present;
+- docs include Slack member ID helper text.
+
+Deferred Slack work:
+
+- compliance Slack delivery test in `prodclaw doctor`;
+- cron enablement gate based on successful compliance delivery;
+- Slack app pairing automation;
+- gateway restart approval flow.
+
 ## Compliance Cron
 
 All v1 compliance cron jobs use `openrouter/xiaomi/mimo-v2.5-pro` as primary with Kimi and GLM fallbacks. Jobs are enabled by default after migration, but setup never runs them.
