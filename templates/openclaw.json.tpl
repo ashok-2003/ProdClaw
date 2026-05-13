@@ -308,22 +308,7 @@
     "slack": {
       "enabled": true,
       "mode": "socket",
-      "appToken": "{{SLACK_APP_TOKEN}}",
-      "botToken": "{{SLACK_BOT_TOKEN}}",
-      "groupPolicy": "open",
-      "capabilities": {
-        "interactiveReplies": true
-      },
       "accounts": {
-        "default": {
-          "enabled": true,
-          "mode": "socket",
-          "appToken": "{{SLACK_APP_TOKEN}}",
-          "botToken": "{{SLACK_BOT_TOKEN}}",
-          "userTokenReadOnly": true,
-          "nativeStreaming": true,
-          "streaming": "partial"
-        },
         "compliance": {
           "enabled": true,
           "mode": "socket",
@@ -338,13 +323,6 @@
     }
   },
   "bindings": [
-    {
-      "match": {
-        "channel": "slack",
-        "accountId": "default"
-      },
-      "agentId": "main"
-    },
     {
       "match": {
         "channel": "slack",
