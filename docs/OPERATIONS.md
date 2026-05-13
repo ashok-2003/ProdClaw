@@ -53,10 +53,29 @@ Current implementation scope:
 
 - rendered config includes the compliance Slack account by default;
 - rendered config omits the main/default Slack account by default;
+- render supports one-bot mode when only compliance Slack is configured;
+- render supports two-bot mode when `--enable-main-slack` is passed with main Slack tokens, or both main Slack token environment variables are present;
 - validation requires compliance Slack;
 - validation allows main/default Slack to be absent;
 - validation checks main/default Slack only when it is present;
 - docs include Slack member ID helper text.
+
+Render examples:
+
+```bash
+# One-bot mode: compliance Slack only
+prodclaw render --home ~/.openclaw --out ./rendered \
+  --slack-compliance-app-token <token> \
+  --slack-compliance-bot-token <token>
+
+# Two-bot mode: compliance Slack plus main Slack
+prodclaw render --home ~/.openclaw --out ./rendered \
+  --enable-main-slack \
+  --slack-compliance-app-token <token> \
+  --slack-compliance-bot-token <token> \
+  --slack-app-token <token> \
+  --slack-bot-token <token>
+```
 
 Deferred Slack work:
 
