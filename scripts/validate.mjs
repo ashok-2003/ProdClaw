@@ -128,6 +128,10 @@ function assertNoCronRuntimeState(value, trail = "cron") {
   }
 }
 
+function isFilled(value, placeholder) {
+  return typeof value === "string" && value.length > 0 && value !== placeholder;
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -138,11 +142,26 @@ for (const rel of requiredFiles) {
 
 const config = readJson(path.join(rendered, "openclaw.json"), "openclaw.json");
 const cron = readJson(path.join(rendered, "cron/jobs.json"), "cron/jobs.json");
+const slack = config.channels?.slack;
+const slackAccounts = slack?.accounts ?? {};
+const mainSlack = slackAccounts.default;
+const complianceSlack = slackAccounts.compliance;
 
 assert(config.channels?.telegram?.enabled === false, "Telegram must be disabled.");
-assert(config.channels?.slack?.accounts?.default, "Slack default account missing.");
-assert(config.channels?.slack?.accounts?.compliance, "Slack compliance account missing.");
-assert(config.channels.slack.accounts.compliance.groupPolicy === "disabled", "Compliance Slack groupPolicy must be disabled.");
+assert(slack?.enabled === true, "Slack channel must be enabled for compliance delivery.");
+assert(complianceSlack, "Slack compliance account missing.");
+assert(complianceSlack.enabled === true, "Slack compliance account must be enabled.");
+assert(complianceSlack.groupPolicy === "disabled", "Compliance Slack groupPolicy must be disabled.");
+assert(isFilled(complianceSlack.appToken, "SLACK_COMPLIANCE_APP_TOKEN"), "Missing Slack compliance app token.");
+assert(isFilled(complianceSlack.botToken, "SLACK_COMPLIANCE_BOT_TOKEN"), "Missing Slack compliance bot token.");
+
+// Main/default Slack is optional in v1. If present, it must be complete.
+if (mainSlack) {
+  assert(mainSlack.enabled === true, "Main Slack account must be enabled when configured.");
+  assert(isFilled(mainSlack.appToken, "SLACK_APP_TOKEN"), "Main Slack app token missing; omit main Slack or render with --slack-app-token.");
+  assert(isFilled(mainSlack.botToken, "SLACK_BOT_TOKEN"), "Main Slack bot token missing; omit main Slack or render with --slack-bot-token.");
+}
+
 assert(config.plugins?.slots?.memory === "memory-lancedb-pro", "LanceDB Pro must be selected as memory slot.");
 assert(config.plugins?.entries?.minimax?.enabled === false, "Native MiniMax plugin must be disabled.");
 
@@ -183,8 +202,6 @@ const forbidden = [
   [blockedHome, "blocked personal absolute path"],
   [/\{\{[A-Z0-9_]+\}\}/, "unreplaced template placeholder"],
   [/\bOPENROUTER_API_KEY\b/, "missing OpenRouter API key (render with --openrouter-api-key or configure it before render)"],
-  [/\bSLACK_BOT_TOKEN\b/, "missing Slack bot token (render with --slack-bot-token if main Slack is enabled)"],
-  [/\bSLACK_APP_TOKEN\b/, "missing Slack app token (render with --slack-app-token if main Slack is enabled)"],
   [/\bSLACK_COMPLIANCE_BOT_TOKEN\b/, "missing Slack compliance bot token (render with --slack-compliance-bot-token)"],
   [/\bSLACK_COMPLIANCE_APP_TOKEN\b/, "missing Slack compliance app token (render with --slack-compliance-app-token)"],
   [/\bSLACK_USER_ID\b/, "missing Slack user ID (render with --slack-user-id)"],
