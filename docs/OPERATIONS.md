@@ -38,10 +38,40 @@ Deferred work:
 
 - interactive configure prompts;
 - staged config persistence;
-- full runtime smoke checks, which belong to `prodclaw doctor`;
 - cron enablement, which belongs to `prodclaw enable-cron`;
 - managed-file rollback, which belongs to `prodclaw revert`;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
+
+## Doctor Preflight
+
+`prodclaw doctor` answers whether the current setup looks safe enough to continue, using `READY`, `WARN`, and `BROKEN` output.
+
+Current doctor scope is local-only and read-only:
+
+- checks OpenClaw home exists;
+- checks OpenClaw config is readable;
+- checks OpenClaw version when available;
+- checks OpenRouter key/config signal without printing secrets;
+- checks LanceDB Pro config state;
+- checks compliance Slack account presence;
+- checks compliance Slack app/bot token presence without printing token values;
+- checks Slack member ID shape when available;
+- checks cron config presence;
+- checks whether ProdClaw/compliance cron jobs exist;
+- warns if ProdClaw/compliance cron jobs appear enabled before smoke tests;
+- checks rendered directory presence;
+- checks backup parent writability;
+- exits non-zero when required pieces are `BROKEN`.
+
+Deferred doctor smoke tests:
+
+- OpenRouter model reachability check;
+- LanceDB Pro memory store/recall check;
+- compliance Slack DM delivery check;
+- gateway/pairing verification;
+- cron enablement gate based on successful smoke tests.
+
+Doctor must not mutate the live OpenClaw home. It must not restart the gateway, enable cron, install plugins, or print raw secrets.
 
 ## LanceDB Pro Policy
 
