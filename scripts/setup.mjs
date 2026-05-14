@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const templatesRoot = path.join(repoRoot, "templates");
+const memoryPluginId = "memory-lancedb-pro";
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -185,12 +186,70 @@ function detectOpenClawVersion(home) {
   return null;
 }
 
+function detectMemoryState(config, home) {
+  const entries = config.plugins?.entries ?? {};
+  const memoryEntry = entries[memoryPluginId];
+  const memorySlot = config.plugins?.slots?.memory ?? null;
+  const loadPaths = config.plugins?.load?.paths ?? [];
+  const defaultExtensionDir = path.join(home, "extensions", memoryPluginId);
+  const configuredLoadPath = loadPaths.find((item) => String(item).includes(memoryPluginId));
+  const resolvedLoadPath = configuredLoadPath ? path.resolve(expandHome(String(configuredLoadPath).replace("{{OPENCLAW_HOME}}", home))) : null;
+  const extensionDirExists = pathExists(defaultExtensionDir) || Boolean(resolvedLoadPath && pathExists(resolvedLoadPath));
+  const entryPresent = Boolean(memoryEntry);
+  const entryEnabled = memoryEntry?.enabled === true;
+  const slotBound = memorySlot === memoryPluginId;
+  const differentActiveMemory = memorySlot && memorySlot !== memoryPluginId ? memorySlot : null;
+
+  let status = "BROKEN";
+  let summary = "LanceDB Pro missing";
+  let action = "Install and enable memory-lancedb-pro before apply/cron enablement.";
+
+  if (entryPresent && entryEnabled && slotBound) {
+    status = "READY";
+    summary = "memory-lancedb-pro is enabled and bound as memory slot";
+    action = "Run doctor later for the real memory smoke test.";
+  } else if (entryPresent && !entryEnabled && slotBound) {
+    status = "WARN";
+    summary = "memory-lancedb-pro is present and selected but disabled";
+    action = "Enable memory-lancedb-pro after approval; preserve existing data.";
+  } else if (entryPresent && entryEnabled && !slotBound && differentActiveMemory) {
+    status = "WARN";
+    summary = "memory-lancedb-pro is enabled but memory slot points to " + differentActiveMemory;
+    action = "Preserve old memory plugin/data, then switch slot after approval.";
+  } else if (entryPresent && !slotBound && differentActiveMemory) {
+    status = "WARN";
+    summary = "different memory plugin active: " + differentActiveMemory;
+    action = "Preserve old memory plugin/data; enable and bind LanceDB Pro after approval.";
+  } else if (entryPresent && !entryEnabled) {
+    status = "WARN";
+    summary = "memory-lancedb-pro entry exists but is disabled";
+    action = "Enable and bind memory-lancedb-pro after approval.";
+  } else if (!entryPresent && extensionDirExists) {
+    status = "WARN";
+    summary = "memory-lancedb-pro files appear present but config entry is missing";
+    action = "Register/enable memory-lancedb-pro after approval.";
+  }
+
+  return {
+    pluginId: memoryPluginId,
+    status,
+    summary,
+    action,
+    entryPresent,
+    entryEnabled,
+    slot: memorySlot,
+    slotBound,
+    differentActiveMemory,
+    extensionDirExists,
+    configuredLoadPath: configuredLoadPath ?? null,
+  };
+}
+
 function detectState(args) {
   const homeCandidate = detectHome(args);
   const home = homeCandidate.value;
   const configHit = findFirstJson(home, ["openclaw.json", "config.json"]);
   const config = configHit?.parsed ?? {};
-  const entries = config.plugins?.entries ?? {};
   const slackAccounts = config.channels?.slack?.accounts ?? {};
   const cronFile = path.join(home, "cron", "jobs.json");
   const cron = readJsonIfExists(cronFile);
@@ -206,8 +265,7 @@ function detectState(args) {
     config.models?.openrouter?.apiKey
   );
 
-  const memoryEntry = entries["memory-lancedb-pro"];
-  const memorySlot = config.plugins?.slots?.memory;
+  const memory = detectMemoryState(config, home);
 
   return {
     home,
@@ -215,15 +273,15 @@ function detectState(args) {
     homeExists: pathExists(home),
     timezone: args.timezone || defaultTimezone(),
     configPath: configHit?.file ?? null,
-    config,
     version: pathExists(home) ? detectOpenClawVersion(home) : null,
     openRouterConfigured,
     slackConfigured: Boolean(config.channels?.slack),
     complianceSlackConfigured: Boolean(slackAccounts.compliance),
     mainSlackConfigured: Boolean(slackAccounts.default),
     slackUserIdDetected: Boolean(config.channels?.slack?.target || config.owner?.slackUserId || process.env.SLACK_USER_ID),
-    lancedbInstalled: Boolean(memoryEntry),
-    lancedbEnabled: memorySlot === "memory-lancedb-pro" || memoryEntry?.enabled === true,
+    memory,
+    lancedbInstalled: memory.entryPresent || memory.extensionDirExists,
+    lancedbEnabled: memory.entryEnabled && memory.slotBound,
     cronFile,
     cronFound: Boolean(cron),
     prodclawCronCount: Array.isArray(cron?.jobs)
@@ -270,10 +328,12 @@ function printInspect(state) {
   console.log("");
 
   console.log("LanceDB Pro");
-  if (state.lancedbInstalled) line("READY", "memory-lancedb-pro entry found");
-  else line("BROKEN", "memory-lancedb-pro entry not detected");
-  if (state.lancedbEnabled) line("READY", "LanceDB Pro memory appears enabled or bound");
-  else line("WARN", "LanceDB Pro memory slot not detected");
+  line(state.memory.status, state.memory.summary);
+  if (state.memory.slot) line(state.memory.slotBound ? "READY" : "WARN", "memory slot: " + state.memory.slot);
+  else line("WARN", "memory slot not configured");
+  if (state.memory.extensionDirExists) line("READY", "memory-lancedb-pro files/load path detected");
+  else line("WARN", "memory-lancedb-pro files/load path not detected");
+  line(state.memory.status === "READY" ? "WARN" : state.memory.status, state.memory.action);
   console.log("");
 
   console.log("Cron");
@@ -302,7 +362,7 @@ function missingConfigureInputs(state) {
     missing.push({ key: "compliance Slack bot token", required: true, reason: "compliance Slack account not detected" });
   }
   if (!state.slackUserIdDetected) missing.push({ key: "compliance Slack member ID", required: true, reason: "not detected" });
-  if (!state.lancedbInstalled || !state.lancedbEnabled) missing.push({ key: "LanceDB Pro setup", required: true, reason: "not fully detected" });
+  if (state.memory.status !== "READY") missing.push({ key: "LanceDB Pro setup", required: true, reason: state.memory.summary + "; " + state.memory.action });
   if (!state.mainSlackConfigured) missing.push({ key: "main Slack tokens", required: false, reason: "optional main Slack interaction not detected" });
   return missing;
 }
@@ -319,7 +379,7 @@ function configure(args) {
   line(state.openRouterConfigured ? "READY" : "WARN", "OpenRouter: " + (state.openRouterConfigured ? "detected" : "missing"));
   line(state.complianceSlackConfigured ? "READY" : "WARN", "Compliance Slack: " + (state.complianceSlackConfigured ? "detected" : "missing"));
   line(state.mainSlackConfigured ? "READY" : "WARN", "Main Slack: " + (state.mainSlackConfigured ? "detected" : "optional / missing"));
-  line(state.lancedbEnabled ? "READY" : "BROKEN", "LanceDB Pro: " + (state.lancedbEnabled ? "detected" : "missing or not bound"));
+  line(state.memory.status, "LanceDB Pro: " + state.memory.summary);
   console.log("");
 
   console.log("Inputs still needed");
@@ -335,8 +395,10 @@ function configure(args) {
 
 function inspect(args) {
   const state = detectState(args);
-  if (args.json) console.log(JSON.stringify({ ...state, gatewayStatus: undefined }, null, 2));
-  else printInspect(state);
+  if (args.json) {
+    const { gatewayStatus, ...safeState } = state;
+    console.log(JSON.stringify(safeState, null, 2));
+  } else printInspect(state);
 }
 
 function shouldRenderMainSlack(args) {

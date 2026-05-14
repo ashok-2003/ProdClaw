@@ -17,7 +17,7 @@ Current inspect scope:
 - detect whether OpenRouter appears configured without printing secrets;
 - detect Slack accounts when present in config;
 - detect compliance Slack, main Slack, and Slack member ID signals;
-- detect LanceDB Pro plugin entry and memory slot binding;
+- detect detailed LanceDB Pro state;
 - detect cron config and compliance cron job count;
 - detect local skills directory count;
 - report gateway status only as a lightweight signal.
@@ -31,7 +31,7 @@ Current configure scope:
 - ask for compliance Slack app/bot tokens only when compliance Slack is not detected;
 - ask for Slack member ID only when not detected;
 - keep main Slack optional;
-- report LanceDB Pro as required when missing or not bound;
+- report LanceDB Pro as required when missing, disabled, or not bound;
 - recommend render flags or local profile values until interactive configure lands.
 
 Deferred work:
@@ -42,6 +42,40 @@ Deferred work:
 - cron enablement, which belongs to `prodclaw enable-cron`;
 - managed-file rollback, which belongs to `prodclaw revert`;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
+
+## LanceDB Pro Policy
+
+LanceDB Pro is required in v1. ProdClaw does not offer a degraded no-memory mode in v1 because durable semantic memory is part of the product promise.
+
+Current implementation scope:
+
+- inspect detects whether the `memory-lancedb-pro` plugin entry exists;
+- inspect detects whether the plugin entry is enabled;
+- inspect detects whether the memory slot is bound to `memory-lancedb-pro`;
+- inspect detects when a different memory plugin is currently active;
+- inspect detects likely local extension/load-path presence without treating it as a smoke test;
+- configure reports LanceDB Pro as required when missing, disabled, or not bound;
+- validation remains strict that rendered config uses `memory-lancedb-pro` as the memory slot;
+- action guidance says to preserve existing LanceDB data and old memory plugin data.
+
+State handling:
+
+- installed and enabled with memory slot bound: continue, but doctor must still smoke test later;
+- installed but disabled: enable after approval and preserve data;
+- missing from config: install/register/enable after approval;
+- different memory plugin active: preserve old plugin/config/data and switch slot only after approval;
+- broken or unknown: stop later in doctor until repaired.
+
+Deferred LanceDB Pro work:
+
+- actual plugin install;
+- actual plugin enable/bind writes;
+- memory store/recall smoke test;
+- cleanup of doctor test memory if supported;
+- OpenClaw CLI-based plugin registration if available;
+- memory migration from other plugins or markdown memory.
+
+ProdClaw does not require a separate database server. OpenClaw runtime storage and LanceDB Pro memory are local/embedded storage concerns.
 
 ## Slack Policy
 
