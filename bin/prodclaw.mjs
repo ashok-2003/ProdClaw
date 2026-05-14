@@ -7,9 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), "..");
 const setupScript = path.join(repoRoot, "scripts", "setup.mjs");
 const validateScript = path.join(repoRoot, "scripts", "validate.mjs");
+const doctorScript = path.join(repoRoot, "scripts", "doctor.mjs");
 
-const implemented = new Set(["inspect", "configure", "render", "validate", "diff", "apply"]);
-const planned = new Set(["doctor", "enable-cron", "revert"]);
+const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply"]);
+const planned = new Set(["enable-cron", "revert"]);
 const allCommands = [
   "inspect",
   "configure",
@@ -43,16 +44,16 @@ Implemented in this CLI wrapper:
   prodclaw configure [--home ~/.openclaw]
   prodclaw render --home ~/.openclaw --out ./rendered [inputs...]
   prodclaw validate [--rendered ./rendered]
+  prodclaw doctor [--home ~/.openclaw] [--rendered ./rendered] [--json]
   prodclaw diff --home ~/.openclaw --rendered ./rendered
   prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
 
 Planned commands currently fail clearly until their implementation issues land:
-  prodclaw doctor
   prodclaw enable-cron
   prodclaw revert
 
 Safety rules:
-  - inspect/configure/render/diff must not edit the live OpenClaw home
+  - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
   - validate checks staged files only
   - apply requires explicit confirmation flags
   - enable-cron remains separate from apply
@@ -79,9 +80,7 @@ function failPlanned(command) {
   console.error(`prodclaw ${command} is part of the v1 command surface but is not implemented yet.`);
   console.error("");
 
-  if (command === "doctor") {
-    console.error("Use validate for staged-file checks until runtime doctor checks land.");
-  } else if (command === "enable-cron") {
+  if (command === "enable-cron") {
     console.error("Cron enablement is intentionally separate and will be implemented after safety checks.");
   } else if (command === "revert") {
     console.error("Managed-file rollback will be implemented separately from apply.");
@@ -117,6 +116,10 @@ if (!implemented.has(command)) {
 
 if (command === "validate") {
   runNode(validateScript, rest.length ? rest : ["--rendered", "./rendered"]);
+}
+
+if (command === "doctor") {
+  runNode(doctorScript, rest);
 }
 
 runNode(setupScript, [command, ...rest]);
