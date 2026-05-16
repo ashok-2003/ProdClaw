@@ -132,6 +132,15 @@ function isFilled(value, placeholder) {
   return typeof value === "string" && value.length > 0 && value !== placeholder;
 }
 
+function includesMessageTool(job) {
+  return Array.isArray(job.payload?.toolsAllow) && job.payload.toolsAllow.includes("message");
+}
+
+function targetsComplianceSlack(job) {
+  const message = String(job.payload?.message ?? "");
+  return message.includes("channel=slack") && message.includes("accountId=compliance") && message.includes("userId=");
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -177,10 +186,15 @@ assert(Array.isArray(cron.jobs), "cron/jobs.json must contain jobs array.");
 assert(cron.jobs.length >= 10, "Expected compliance cron jobs to be present.");
 assertNoCronRuntimeState(cron);
 
-for (const job of cron.jobs) {
-  assert(job.enabled === true, "Cron job must be enabled: " + job.name);
+const prodclawJobs = cron.jobs.filter((job) => String(job.name ?? "").startsWith("prodclaw.compliance."));
+assert(prodclawJobs.length === cron.jobs.length, "Rendered cron template must contain only namespaced ProdClaw compliance jobs.");
+
+for (const job of prodclawJobs) {
+  assert(job.enabled === false, "ProdClaw cron job must render disabled until enable-cron: " + job.name);
   assert(job.agentId === "compliance", "Cron job must target compliance: " + job.name);
   assert(job.payload?.model === "openrouter/xiaomi/mimo-v2.5-pro", "Cron job must use Mimo primary: " + job.name);
+  assert(includesMessageTool(job), "Cron delivery job must include message tool: " + job.name);
+  assert(targetsComplianceSlack(job), "Cron delivery job must target compliance Slack: " + job.name);
   const fallbacks = job.payload?.fallbacks ?? [];
   assert(fallbacks[0] === "openrouter/moonshotai/kimi-k2.6", "Cron first fallback must be Kimi: " + job.name);
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
