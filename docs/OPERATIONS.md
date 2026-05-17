@@ -72,6 +72,45 @@ Deferred doctor smoke tests:
 
 Doctor must not mutate the live OpenClaw home. It must not restart the gateway, enable cron, install plugins, or print raw secrets.
 
+## Validation Policy
+
+`prodclaw validate` enforces v1 rendered policy before apply.
+
+Current validation scope:
+
+- required rendered files exist;
+- compliance Slack is required;
+- main/default Slack is optional, but strict if present;
+- Telegram is disabled;
+- LanceDB Pro is selected as the memory slot;
+- required plugins are enabled;
+- native provider plugins stay disabled;
+- required agents are exactly `main`, `consultant`, and `compliance`;
+- agent model policies use OpenRouter model IDs and fallbacks;
+- LanceDB Pro embedding, rerank, and memory reflection config use OpenRouter endpoints;
+- ProdClaw cron jobs are namespaced as `prodclaw.compliance.*`;
+- ProdClaw cron jobs render disabled before `enable-cron`;
+- ProdClaw cron jobs target the compliance agent;
+- delivery cron jobs include the `message` tool and target Slack `accountId=compliance`;
+- cron job names and IDs are unique;
+- rendered cron output contains only ProdClaw-owned jobs;
+- stale cron runtime state is rejected;
+- unreplaced placeholders are rejected;
+- known source-owner names and source-machine paths are rejected.
+
+Credential boundary:
+
+- Local rendered config can contain user-provided credentials because it is the staged OpenClaw config and must remain git-ignored.
+- Validation output must not print credential values.
+- Repository/template credential scanning remains separate from rendered validation.
+- Missing credential placeholders remain validation failures.
+
+Deferred validation work:
+
+- external smoke tests, which belong to `prodclaw doctor`;
+- real non-ProdClaw cron/skill merge verification in apply or OpenClaw CLI registration work;
+- `enable-cron` gating.
+
 ## Apply Validation Gate
 
 `prodclaw apply` enforces validation before writing to the live OpenClaw home.

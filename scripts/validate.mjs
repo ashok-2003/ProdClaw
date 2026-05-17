@@ -4,7 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const validationMarkerName = ".prodclaw-validation.json";
-const validatorVersion = 1;
+const validatorVersion = 2;
+const openRouterPrefix = "openrouter/";
+const prodClawCronPrefix = "prodclaw.";
+const prodClawComplianceCronPrefix = "prodclaw.compliance.";
+
+const requiredAgentIds = new Set(["main", "consultant", "compliance"]);
 
 const nativeProviders = [
   "amazon-bedrock",
@@ -167,8 +172,55 @@ function isFilled(value, placeholder) {
   return typeof value === "string" && value.length > 0 && value !== placeholder;
 }
 
+function isOpenRouterModel(value) {
+  return typeof value === "string" && value.startsWith(openRouterPrefix);
+}
+
+function assertOpenRouterModel(value, label) {
+  assert(isOpenRouterModel(value), label + " must use OpenRouter model id, got: " + String(value || "missing"));
+}
+
+function assertFallbacks(fallbacks, label) {
+  assert(Array.isArray(fallbacks), label + " must declare fallbacks array.");
+  assert(fallbacks.length > 0, label + " must include at least one fallback.");
+  for (const fallback of fallbacks) assertOpenRouterModel(fallback, label + " fallback");
+}
+
+function assertModelPolicy(modelPolicy, label) {
+  assert(modelPolicy && typeof modelPolicy === "object", label + " must declare model policy object.");
+  assertOpenRouterModel(modelPolicy.primary, label + " primary model");
+  assertFallbacks(modelPolicy.fallbacks, label);
+}
+
 function isProdClawCron(job) {
-  return typeof job?.name === "string" && job.name.startsWith("prodclaw.");
+  return typeof job?.name === "string" && job.name.startsWith(prodClawCronPrefix);
+}
+
+function assertNoNonProdClawCronJobs(jobs) {
+  const nonProdClaw = jobs.filter((job) => !isProdClawCron(job));
+  assert(
+    nonProdClaw.length === 0,
+    "Rendered cron template must contain only ProdClaw-owned jobs; preserve/merge non-ProdClaw jobs during apply/registration work. Found: " +
+      nonProdClaw.map((job) => String(job?.name || "<unnamed>")).join(", ")
+  );
+}
+
+function assertNoDuplicateCronNames(jobs) {
+  const seen = new Set();
+  for (const job of jobs) {
+    assert(typeof job.name === "string" && job.name.length > 0, "Cron job missing name.");
+    assert(!seen.has(job.name), "Duplicate cron job name: " + job.name);
+    seen.add(job.name);
+  }
+}
+
+function assertNoDuplicateCronIds(jobs) {
+  const seen = new Set();
+  for (const job of jobs) {
+    assert(typeof job.id === "string" && job.id.length > 0, "Cron job missing id: " + String(job.name || "<unnamed>"));
+    assert(!seen.has(job.id), "Duplicate cron job id: " + job.id);
+    seen.add(job.id);
+  }
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -212,18 +264,41 @@ for (const plugin of requiredPlugins) {
   assert(config.plugins?.entries?.[plugin]?.enabled === true, "Required plugin not enabled: " + plugin);
 }
 
+assertModelPolicy(config.agents?.defaults?.model, "Agent defaults");
+const agents = config.agents?.list ?? [];
+assert(Array.isArray(agents), "agents.list must be an array.");
+for (const id of requiredAgentIds) {
+  assert(agents.some((agent) => agent.id === id), "Missing required agent: " + id);
+}
+for (const agent of agents) {
+  assert(requiredAgentIds.has(agent.id), "Rendered config contains unexpected agent id: " + String(agent.id));
+  assertModelPolicy(agent.model, "Agent " + agent.id);
+}
+
+const memoryConfig = config.plugins?.entries?.["memory-lancedb-pro"]?.config;
+assert(memoryConfig, "memory-lancedb-pro config missing.");
+assert(memoryConfig.embedding?.baseURL === "https://openrouter.ai/api/v1", "LanceDB embedding must use OpenRouter baseURL.");
+assert(memoryConfig.embedding?.apiKey, "LanceDB embedding apiKey must be configured.");
+assert(memoryConfig.rerank?.rerankEndpoint === "https://openrouter.ai/api/v1/rerank", "LanceDB rerank must use OpenRouter rerank endpoint.");
+assert(memoryConfig.rerank?.rerankApiKey, "LanceDB rerank api key must be configured.");
+assert(memoryConfig.llm?.baseURL === "https://openrouter.ai/api/v1", "LanceDB memory reflection LLM must use OpenRouter baseURL.");
+assert(memoryConfig.llm?.apiKey, "LanceDB memory reflection LLM apiKey must be configured.");
+
 assert(Array.isArray(cron.jobs), "cron/jobs.json must contain jobs array.");
 assert(cron.jobs.length >= 10, "Expected compliance cron jobs to be present.");
 assertNoCronRuntimeState(cron);
+assertNoDuplicateCronNames(cron.jobs);
+assertNoDuplicateCronIds(cron.jobs);
+assertNoNonProdClawCronJobs(cron.jobs);
 
 const prodclawJobs = cron.jobs.filter(isProdClawCron);
 assert(prodclawJobs.length >= 10, "Expected ProdClaw cron jobs to be namespaced with prodclaw.*");
 
 for (const job of prodclawJobs) {
-  assert(job.name.startsWith("prodclaw.compliance."), "ProdClaw cron job must use prodclaw.compliance.* namespace: " + job.name);
+  assert(job.name.startsWith(prodClawComplianceCronPrefix), "ProdClaw cron job must use prodclaw.compliance.* namespace: " + job.name);
   assert(job.enabled === false, "ProdClaw cron job must render disabled before enable-cron: " + job.name);
   assert(job.agentId === "compliance", "ProdClaw cron job must target compliance: " + job.name);
-  assert(job.payload?.model === "openrouter/xiaomi/mimo-v2.5-pro", "Cron job must use Mimo primary: " + job.name);
+  assertOpenRouterModel(job.payload?.model, "Cron job " + job.name + " primary model");
   assert(Array.isArray(job.payload?.toolsAllow), "Cron job must declare allowed tools: " + job.name);
   assert(job.payload.toolsAllow.includes("message"), "Delivery cron job must allow message tool: " + job.name);
   assert(String(job.payload?.message ?? "").includes("accountId=compliance"), "Delivery cron job must target compliance Slack account: " + job.name);
@@ -239,7 +314,8 @@ const allText = renderedFiles
 
 // Local rendered validation intentionally allows real credentials because ./rendered
 // is local-only and git-ignored. Repository credential scanning belongs in
-// scripts/scan-secrets.mjs.
+// scripts/scan-secrets.mjs. Validation errors must describe missing/unsafe state
+// without printing secret values.
 const blockedNames = ["as" + "hok", "sha" + "shwat"];
 const blockedHome = new RegExp("/home/" + blockedNames[1], "i");
 const forbidden = [
