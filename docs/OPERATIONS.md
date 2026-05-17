@@ -39,7 +39,6 @@ Deferred work:
 - interactive configure prompts;
 - staged config persistence;
 - cron enablement, which belongs to `prodclaw enable-cron`;
-- managed-file rollback, which belongs to `prodclaw revert`;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
 ## Doctor Preflight
@@ -121,12 +120,37 @@ prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
 prodclaw apply --home ~/.openclaw --rendered ./rendered --yes --full-backup
 ```
 
-Deferred apply work:
+## Revert Policy
 
-- full `APPLY` typed confirmation flow;
-- managed-file revert;
+`prodclaw revert` restores ProdClaw-managed harness files only.
+
+Current implementation scope:
+
+- `prodclaw revert` restores only from managed backup manifests created by `prodclaw apply`;
+- `--backup <path>` can select a specific managed backup;
+- without `--backup`, revert chooses the latest managed backup in `<home>/backups`;
+- copied files listed in the manifest are restored to the OpenClaw home;
+- files listed as skipped/missing before apply are removed only when they are ProdClaw-managed paths;
+- every restored or removed path must be a known managed file from the template-derived managed file list;
+- revert requires `--yes`;
+- revert refuses full-home backup manifests and unknown backup formats.
+
+Example:
+
+```bash
+prodclaw revert --home ~/.openclaw --backup ~/.openclaw/backups/prodclaw-<timestamp> --yes
+```
+
+`prodclaw revert` does not roll back conversations, sessions, memories, LanceDB data, logs, auth profiles, runtime databases, non-ProdClaw skills, non-ProdClaw cron jobs, or user-created files.
+
+Full OpenClaw home restore is intentionally not part of v1.
+
+Deferred apply/revert work:
+
+- full `APPLY` / `REVERT` typed confirmation flow;
 - doctor live smoke-test gate;
-- cron enablement gate.
+- cron enablement gate;
+- OpenClaw CLI registration rollback from #24.
 
 ## LanceDB Pro Policy
 
