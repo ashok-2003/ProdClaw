@@ -8,9 +8,10 @@ const repoRoot = path.resolve(path.dirname(__filename), "..");
 const setupScript = path.join(repoRoot, "scripts", "setup.mjs");
 const validateScript = path.join(repoRoot, "scripts", "validate.mjs");
 const doctorScript = path.join(repoRoot, "scripts", "doctor.mjs");
+const revertScript = path.join(repoRoot, "scripts", "revert.mjs");
 
-const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply"]);
-const planned = new Set(["enable-cron", "revert"]);
+const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply", "revert"]);
+const planned = new Set(["enable-cron"]);
 const allCommands = [
   "inspect",
   "configure",
@@ -46,16 +47,17 @@ Implemented in this CLI wrapper:
   prodclaw validate [--rendered ./rendered]
   prodclaw doctor [--home ~/.openclaw] [--rendered ./rendered] [--json]
   prodclaw diff --home ~/.openclaw --rendered ./rendered
-  prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
+  prodclaw apply --home ~/.openclaw --rendered ./rendered --yes [--full-backup]
+  prodclaw revert --home ~/.openclaw [--backup ~/.openclaw/backups/prodclaw-<timestamp>] --yes
 
 Planned commands currently fail clearly until their implementation issues land:
   prodclaw enable-cron
-  prodclaw revert
 
 Safety rules:
   - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
   - validate checks staged files only
   - apply requires explicit confirmation flags
+  - revert restores managed files only from managed backups
   - enable-cron remains separate from apply
   - no command should print raw secrets
 `);
@@ -82,8 +84,6 @@ function failPlanned(command) {
 
   if (command === "enable-cron") {
     console.error("Cron enablement is intentionally separate and will be implemented after safety checks.");
-  } else if (command === "revert") {
-    console.error("Managed-file rollback will be implemented separately from apply.");
   }
 
   process.exit(2);
@@ -120,6 +120,10 @@ if (command === "validate") {
 
 if (command === "doctor") {
   runNode(doctorScript, rest);
+}
+
+if (command === "revert") {
+  runNode(revertScript, rest);
 }
 
 runNode(setupScript, [command, ...rest]);
