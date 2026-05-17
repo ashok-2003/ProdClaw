@@ -1,6 +1,10 @@
 #!/usr/bin/env node
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+
+const validationMarkerName = ".prodclaw-validation.json";
+const validatorVersion = 1;
 
 const nativeProviders = [
   "amazon-bedrock",
@@ -83,7 +87,7 @@ function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith("--")) out[arg.slice(2)] = argv[++i];
+    if (arg.startsWith("--")) out[arg.slice(2)] = argv[++i] ?? true;
   }
   return out;
 }
@@ -96,6 +100,37 @@ function walk(dir) {
     else files.push(full);
   }
   return files;
+}
+
+function relativeRenderedFiles(rendered) {
+  return walk(rendered)
+    .map((file) => path.relative(rendered, file))
+    .filter((rel) => rel !== validationMarkerName)
+    .sort();
+}
+
+function hashFile(file) {
+  return "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function buildValidationMarker(rendered) {
+  const fileHashes = {};
+  for (const rel of relativeRenderedFiles(rendered)) {
+    fileHashes[rel] = hashFile(path.join(rendered, rel));
+  }
+
+  return {
+    validator: "prodclaw-rendered-validation",
+    validatorVersion,
+    validatedAt: new Date().toISOString(),
+    renderedRoot: rendered,
+    fileHashes,
+  };
+}
+
+function writeValidationMarker(rendered) {
+  const marker = buildValidationMarker(rendered);
+  fs.writeFileSync(path.join(rendered, validationMarkerName), JSON.stringify(marker, null, 2) + "\n");
 }
 
 function fail(message) {
@@ -197,9 +232,9 @@ for (const job of prodclawJobs) {
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
 }
 
-const renderedFiles = walk(rendered);
+const renderedFiles = relativeRenderedFiles(rendered);
 const allText = renderedFiles
-  .map((file) => fs.readFileSync(file, "utf8"))
+  .map((rel) => fs.readFileSync(path.join(rendered, rel), "utf8"))
   .join("\n");
 
 // Local rendered validation intentionally allows real credentials because ./rendered
@@ -222,4 +257,6 @@ for (const [pattern, label] of forbidden) {
   assert(!pattern.test(allText), "Forbidden content found: " + label);
 }
 
+writeValidationMarker(rendered);
 console.log("Rendered validation passed.");
+console.log("Validation marker written: " + path.join(rendered, validationMarkerName));
