@@ -129,16 +129,16 @@ Render examples:
 ```bash
 # One-bot mode: compliance Slack only
 prodclaw render --home ~/.openclaw --out ./rendered \
-  --slack-compliance-app-token <token> \
-  --slack-compliance-bot-token <token>
+  --slack-compliance-app-token <value> \
+  --slack-compliance-bot-token <value>
 
 # Two-bot mode: compliance Slack plus main Slack
 prodclaw render --home ~/.openclaw --out ./rendered \
   --enable-main-slack \
-  --slack-compliance-app-token <token> \
-  --slack-compliance-bot-token <token> \
-  --slack-app-token <token> \
-  --slack-bot-token <token>
+  --slack-compliance-app-token <value> \
+  --slack-compliance-bot-token <value> \
+  --slack-app-token <value> \
+  --slack-bot-token <value>
 ```
 
 Deferred Slack work:
@@ -150,9 +150,21 @@ Deferred Slack work:
 
 ## Compliance Cron
 
-All v1 compliance cron jobs use `openrouter/xiaomi/mimo-v2.5-pro` as primary with Kimi and GLM fallbacks. Jobs are enabled by default after migration, but setup never runs them.
+All v1 compliance cron jobs use `openrouter/xiaomi/mimo-v2.5-pro` as primary with Kimi and GLM fallbacks.
 
-Cron templates are declarative. `templates/cron/jobs.json.tpl` and rendered `cron/jobs.json` should describe what jobs exist and how they should run: job identity, schedule, target agent, model policy, tools, and payload.
+ProdClaw-owned cron jobs must render disabled by default. Setup, render, validate, diff, and apply must not run cron. `prodclaw enable-cron` is the only command that should enable ProdClaw-owned cron jobs, and it must wait for future live smoke checks.
+
+Current implementation scope:
+
+- ProdClaw-owned cron jobs use the `prodclaw.compliance.*` namespace;
+- rendered ProdClaw-owned jobs are disabled by default;
+- rendered ProdClaw-owned jobs target the `compliance` agent;
+- delivery jobs include the `message` tool;
+- delivery jobs target Slack `accountId=compliance`;
+- validation rejects runtime-only cron state;
+- validation rejects enabled ProdClaw cron jobs before `enable-cron`.
+
+Cron templates are declarative. `templates/cron/jobs.json.tpl` and rendered `cron/jobs.json` should describe desired jobs: identity, schedule, target agent, model policy, tools, and payload.
 
 Cron runtime state is owned by the local OpenClaw runtime, not by ProdClaw templates. Do not commit or render prior runtime fields such as:
 
@@ -170,6 +182,14 @@ Cron runtime state is owned by the local OpenClaw runtime, not by ProdClaw templ
 Fresh migrations must not start with previous errors, stale timestamps, old delivery state, or copied billing failures from another environment. Validation rejects runtime-only cron keys in rendered cron jobs.
 
 If an existing user already has local cron runtime state, migration/apply logic should preserve or merge that state locally in the target OpenClaw home. It should never come from a committed template.
+
+Deferred cron work:
+
+- real `prodclaw enable-cron` implementation;
+- compliance Slack delivery smoke test;
+- OpenRouter and LanceDB live smoke gates;
+- OpenClaw CLI-based cron registration from #24;
+- preservation/merge logic for non-ProdClaw cron jobs.
 
 ## Gateway
 

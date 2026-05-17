@@ -132,6 +132,10 @@ function isFilled(value, placeholder) {
   return typeof value === "string" && value.length > 0 && value !== placeholder;
 }
 
+function isProdClawCron(job) {
+  return typeof job?.name === "string" && job.name.startsWith("prodclaw.");
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -177,10 +181,17 @@ assert(Array.isArray(cron.jobs), "cron/jobs.json must contain jobs array.");
 assert(cron.jobs.length >= 10, "Expected compliance cron jobs to be present.");
 assertNoCronRuntimeState(cron);
 
-for (const job of cron.jobs) {
-  assert(job.enabled === true, "Cron job must be enabled: " + job.name);
-  assert(job.agentId === "compliance", "Cron job must target compliance: " + job.name);
+const prodclawJobs = cron.jobs.filter(isProdClawCron);
+assert(prodclawJobs.length >= 10, "Expected ProdClaw cron jobs to be namespaced with prodclaw.*");
+
+for (const job of prodclawJobs) {
+  assert(job.name.startsWith("prodclaw.compliance."), "ProdClaw cron job must use prodclaw.compliance.* namespace: " + job.name);
+  assert(job.enabled === false, "ProdClaw cron job must render disabled before enable-cron: " + job.name);
+  assert(job.agentId === "compliance", "ProdClaw cron job must target compliance: " + job.name);
   assert(job.payload?.model === "openrouter/xiaomi/mimo-v2.5-pro", "Cron job must use Mimo primary: " + job.name);
+  assert(Array.isArray(job.payload?.toolsAllow), "Cron job must declare allowed tools: " + job.name);
+  assert(job.payload.toolsAllow.includes("message"), "Delivery cron job must allow message tool: " + job.name);
+  assert(String(job.payload?.message ?? "").includes("accountId=compliance"), "Delivery cron job must target compliance Slack account: " + job.name);
   const fallbacks = job.payload?.fallbacks ?? [];
   assert(fallbacks[0] === "openrouter/moonshotai/kimi-k2.6", "Cron first fallback must be Kimi: " + job.name);
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
