@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { detectOpenClawCliCapabilities } from "./openclaw-cli-capabilities.mjs";
 
 const memoryPluginId = "memory-lancedb-pro";
 
@@ -137,6 +138,27 @@ function sectionStatus(checks, section) {
   return "READY";
 }
 
+function addOpenClawCliChecks(checks, home) {
+  const capabilities = detectOpenClawCliCapabilities(home);
+  if (!capabilities.available) {
+    add(checks, "OpenClaw CLI", "WARN", "OpenClaw CLI help is not available", "Runtime registration will use documented fallback behavior until CLI commands are confirmed.");
+    return;
+  }
+
+  add(checks, "OpenClaw CLI", "READY", "OpenClaw CLI is available");
+  if (capabilities.cron.available) add(checks, "OpenClaw CLI", "READY", "OpenClaw cron command group appears available");
+  else add(checks, "OpenClaw CLI", "WARN", "OpenClaw cron command group not detected", "Keep local file-based cron fallback until command syntax is confirmed.");
+
+  if (capabilities.cron.add && capabilities.cron.list) add(checks, "OpenClaw CLI", "READY", "OpenClaw cron add/list commands appear available");
+  else add(checks, "OpenClaw CLI", "WARN", "OpenClaw cron add/list commands not confirmed", "Do not switch cron registration until exact command syntax is verified.");
+
+  if (capabilities.agents.available) add(checks, "OpenClaw CLI", "READY", "OpenClaw agents command group appears available");
+  else add(checks, "OpenClaw CLI", "WARN", "OpenClaw agents command group not detected", "Keep local config/static-file fallback until command syntax is confirmed.");
+
+  if (capabilities.agents.add && capabilities.agents.list) add(checks, "OpenClaw CLI", "READY", "OpenClaw agents add/list commands appear available");
+  else add(checks, "OpenClaw CLI", "WARN", "OpenClaw agents add/list commands not confirmed", "Do not switch agent registration until exact command syntax is verified.");
+}
+
 function runDoctor(args) {
   const homeCandidate = detectHome(args);
   const home = homeCandidate.value;
@@ -154,6 +176,8 @@ function runDoctor(args) {
   const version = fs.existsSync(home) ? detectOpenClawVersion(home) : null;
   if (version) add(checks, "OpenClaw", "READY", "OpenClaw version detected: " + version);
   else add(checks, "OpenClaw", "WARN", "OpenClaw version not detected", "Doctor can continue, but compatibility is not fully known.");
+
+  addOpenClawCliChecks(checks, home);
 
   const openRouterConfigured = Boolean(
     process.env.OPENROUTER_API_KEY ||
@@ -221,7 +245,7 @@ function runDoctor(args) {
 function printChecks(checks) {
   console.log("ProdClaw Doctor");
   console.log("");
-  for (const section of ["OpenClaw", "OpenRouter", "LanceDB Pro", "Slack", "Cron", "Safety"]) {
+  for (const section of ["OpenClaw", "OpenClaw CLI", "OpenRouter", "LanceDB Pro", "Slack", "Cron", "Safety"]) {
     console.log(section);
     for (const check of checks.filter((item) => item.section === section)) {
       console.log(check.status.padEnd(7) + check.message);
@@ -230,7 +254,7 @@ function printChecks(checks) {
     console.log("");
   }
 
-  const summary = ["OpenClaw", "OpenRouter", "LanceDB Pro", "Slack", "Cron", "Safety"]
+  const summary = ["OpenClaw", "OpenClaw CLI", "OpenRouter", "LanceDB Pro", "Slack", "Cron", "Safety"]
     .map((section) => section + ": " + sectionStatus(checks, section))
     .join(", ");
   console.log("Summary: " + summary);
