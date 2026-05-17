@@ -21,7 +21,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (key === "yes" || key === "json" || key === "enable-main-slack") {
+    if (key === "yes" || key === "json" || key === "enable-main-slack" || key === "full-backup") {
       out[key] = true;
       continue;
     }
@@ -479,13 +479,17 @@ function diff(args, home) {
     const candidate = path.join(rendered, rel);
     if (!fs.existsSync(candidate)) continue;
 
+    const currentLabel = fs.existsSync(current) ? "current/" + rel : "current/" + rel + " (missing)";
+    const currentPath = fs.existsSync(current) ? current : "/dev/null";
+    if (!fs.existsSync(current)) console.log("NEW FILE: " + rel);
+
     const result = run("diff", [
       "-u",
       "--label",
-      "current/" + rel,
+      currentLabel,
       "--label",
       "rendered/" + rel,
-      current,
+      currentPath,
       candidate,
     ]);
 
@@ -538,6 +542,59 @@ function assertFreshValidation(rendered) {
   }
 }
 
+function backupManifest(mode, home, rendered, copiedFiles, skippedFiles) {
+  return {
+    createdAt: new Date().toISOString(),
+    mode,
+    sourceHome: home,
+    renderedRoot: rendered,
+    managedFiles: managedFiles(),
+    copiedFiles,
+    skippedFiles,
+    notes: mode === "full"
+      ? "Full OpenClaw home backup was explicitly requested with --full-backup."
+      : "Default backup copied only existing files that ProdClaw manages and is about to replace. Runtime memory, sessions, logs, auth, databases, non-ProdClaw skills, and non-ProdClaw cron state were not copied.",
+  };
+}
+
+function createManagedBackup(home, rendered, stamp) {
+  const backup = path.join(home, "backups", "prodclaw-" + stamp);
+  const copiedFiles = [];
+  const skippedFiles = [];
+  ensureDir(backup);
+
+  for (const rel of managedFiles()) {
+    const src = path.join(home, rel);
+    const candidate = path.join(rendered, rel);
+    if (!fs.existsSync(candidate)) continue;
+    if (!fs.existsSync(src)) {
+      skippedFiles.push({ path: rel, reason: "target file did not exist before apply" });
+      continue;
+    }
+
+    const dst = path.join(backup, rel);
+    ensureDir(path.dirname(dst));
+    fs.copyFileSync(src, dst);
+    copiedFiles.push(rel);
+  }
+
+  fs.writeFileSync(
+    path.join(backup, "manifest.json"),
+    JSON.stringify(backupManifest("managed", home, rendered, copiedFiles, skippedFiles), null, 2) + "\n",
+  );
+  return backup;
+}
+
+function createFullBackup(home, rendered, stamp) {
+  const backup = home + ".prodclaw-full-backup." + stamp;
+  fs.cpSync(home, backup, { recursive: true, errorOnExist: true });
+  fs.writeFileSync(
+    path.join(backup, "prodclaw-backup-manifest.json"),
+    JSON.stringify(backupManifest("full", home, rendered, managedFiles(), []), null, 2) + "\n",
+  );
+  return backup;
+}
+
 function apply(args, home) {
   if (!args.yes) throw new Error("Refusing to apply without --yes.");
   const rendered = path.resolve(args.rendered || "./rendered");
@@ -547,12 +604,13 @@ function apply(args, home) {
   assertFreshValidation(rendered);
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backup = home + ".prodclaw-backup." + stamp;
-  fs.cpSync(home, backup, { recursive: true, errorOnExist: true });
+  const backup = args["full-backup"]
+    ? createFullBackup(home, rendered, stamp)
+    : createManagedBackup(home, rendered, stamp);
   copyManagedFiles(rendered, home);
 
   console.log("Applied " + managedFiles().length + " managed files to " + home);
-  console.log("Backup: " + backup);
+  console.log((args["full-backup"] ? "Full backup" : "Managed-file backup") + ": " + backup);
   console.log("Restart the OpenClaw gateway manually after review.");
 }
 
@@ -563,7 +621,7 @@ function usage() {
   console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered [inputs...] [--user-profile local/user-profile.json]");
   console.log("  node scripts/setup.mjs render --home ~/.openclaw --out ./rendered --enable-main-slack --slack-app-token <token> --slack-bot-token <token>");
   console.log("  node scripts/setup.mjs diff --home ~/.openclaw --rendered ./rendered");
-  console.log("  node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes");
+  console.log("  node scripts/setup.mjs apply --home ~/.openclaw --rendered ./rendered --yes [--full-backup]");
 }
 
 try {

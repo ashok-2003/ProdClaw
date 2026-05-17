@@ -97,9 +97,32 @@ prodclaw diff --home ~/.openclaw --rendered ./rendered
 prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
 ```
 
+## Apply Backup and Diff Safety
+
+`prodclaw apply` uses managed-file-only backup by default.
+
+Current implementation scope:
+
+- default apply backup copies only existing target files that ProdClaw manages and is about to replace;
+- missing target files are recorded in the backup manifest as skipped because they did not exist before apply;
+- backup manifest is written to `backups/prodclaw-<timestamp>/manifest.json` inside the OpenClaw home;
+- manifest records source home, rendered root, managed files, copied files, skipped files, backup mode, and notes;
+- runtime memory, sessions, logs, auth, databases, non-ProdClaw skills, and non-ProdClaw cron state are not copied by the default backup;
+- users can request a full OpenClaw home backup explicitly with `--full-backup`;
+- missing target files in `prodclaw diff` are shown as `NEW FILE: <path>` and diffed against `/dev/null`.
+
+Examples:
+
+```bash
+# Default: managed-file-only backup
+prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
+
+# Explicit full-home backup
+prodclaw apply --home ~/.openclaw --rendered ./rendered --yes --full-backup
+```
+
 Deferred apply work:
 
-- managed-file-only backup refactor;
 - full `APPLY` typed confirmation flow;
 - managed-file revert;
 - doctor live smoke-test gate;
