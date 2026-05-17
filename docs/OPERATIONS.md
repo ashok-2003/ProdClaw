@@ -73,6 +73,38 @@ Deferred doctor smoke tests:
 
 Doctor must not mutate the live OpenClaw home. It must not restart the gateway, enable cron, install plugins, or print raw secrets.
 
+## Apply Validation Gate
+
+`prodclaw apply` enforces validation before writing to the live OpenClaw home.
+
+Current implementation scope:
+
+- `prodclaw validate` writes `.prodclaw-validation.json` inside the rendered directory after successful validation;
+- the marker records validator identity, validator version, validation time, rendered root, and sha256 hashes for rendered files;
+- the marker itself is excluded from validation text scans and hash checks;
+- `prodclaw apply` refuses to run if the marker is missing;
+- `prodclaw apply` refuses to run if the marker is invalid or incompatible;
+- `prodclaw apply` refuses to run if rendered files were added, removed, or changed after validation;
+- failure messages tell the user to rerun validate and review diff before apply.
+
+Expected safe flow:
+
+```bash
+prodclaw render --home ~/.openclaw --out ./rendered
+prodclaw validate --rendered ./rendered
+prodclaw doctor --home ~/.openclaw --rendered ./rendered
+prodclaw diff --home ~/.openclaw --rendered ./rendered
+prodclaw apply --home ~/.openclaw --rendered ./rendered --yes
+```
+
+Deferred apply work:
+
+- managed-file-only backup refactor;
+- full `APPLY` typed confirmation flow;
+- managed-file revert;
+- doctor live smoke-test gate;
+- cron enablement gate.
+
 ## LanceDB Pro Policy
 
 LanceDB Pro is required in v1. ProdClaw does not offer a degraded no-memory mode in v1 because durable semantic memory is part of the product promise.

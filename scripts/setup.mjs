@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,6 +9,8 @@ import { spawnSync } from "node:child_process";
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const templatesRoot = path.join(repoRoot, "templates");
 const memoryPluginId = "memory-lancedb-pro";
+const validationMarkerName = ".prodclaw-validation.json";
+const expectedValidatorVersion = 1;
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -64,6 +67,10 @@ function managedFiles() {
     .filter((file) => file.endsWith(".tpl"))
     .map((file) => path.relative(templatesRoot, file).replace(/\.tpl$/, ""))
     .sort();
+}
+
+function hashFile(file) {
+  return "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
 function run(command, args, opts = {}) {
@@ -285,7 +292,7 @@ function detectState(args) {
     cronFile,
     cronFound: Boolean(cron),
     prodclawCronCount: Array.isArray(cron?.jobs)
-      ? cron.jobs.filter((job) => String(job.name ?? "").startsWith("compliance-")).length
+      ? cron.jobs.filter((job) => String(job.name ?? "").startsWith("prodclaw.compliance.") || String(job.name ?? "").startsWith("compliance-")).length
       : 0,
     customSkills,
     gatewayStatus: run("openclaw", ["status"], { env: { ...process.env, OPENCLAW_HOME: home } }),
@@ -487,11 +494,57 @@ function diff(args, home) {
   }
 }
 
+function assertFreshValidation(rendered) {
+  const markerPath = path.join(rendered, validationMarkerName);
+  if (!fs.existsSync(markerPath)) {
+    throw new Error(
+      "Rendered output has not been validated. Run `prodclaw validate --rendered " + rendered + "`, review `prodclaw diff`, then run apply again."
+    );
+  }
+
+  const marker = readJsonIfExists(markerPath);
+  if (!marker || marker.validator !== "prodclaw-rendered-validation") {
+    throw new Error("Validation marker is invalid. Rerun `prodclaw validate --rendered " + rendered + "` and review diff before apply.");
+  }
+
+  if (marker.validatorVersion !== expectedValidatorVersion) {
+    throw new Error("Validation marker version is incompatible. Rerun `prodclaw validate --rendered " + rendered + "` and review diff before apply.");
+  }
+
+  const expectedHashes = marker.fileHashes ?? {};
+  const expectedFiles = Object.keys(expectedHashes).sort();
+  if (expectedFiles.length === 0) {
+    throw new Error("Validation marker has no file hashes. Rerun `prodclaw validate --rendered " + rendered + "` and review diff before apply.");
+  }
+
+  const currentFiles = walk(rendered)
+    .map((file) => path.relative(rendered, file))
+    .filter((rel) => rel !== validationMarkerName)
+    .sort();
+
+  const missing = expectedFiles.filter((rel) => !currentFiles.includes(rel));
+  const added = currentFiles.filter((rel) => !expectedFiles.includes(rel));
+  const changed = expectedFiles.filter((rel) => currentFiles.includes(rel) && hashFile(path.join(rendered, rel)) !== expectedHashes[rel]);
+
+  if (missing.length || added.length || changed.length) {
+    const details = [
+      missing.length ? "missing: " + missing.join(", ") : null,
+      added.length ? "added: " + added.join(", ") : null,
+      changed.length ? "changed: " + changed.join(", ") : null,
+    ].filter(Boolean).join("; ");
+    throw new Error(
+      "Rendered output changed after validation (" + details + "). Run `prodclaw validate --rendered " + rendered + "`, review `prodclaw diff`, then apply again."
+    );
+  }
+}
+
 function apply(args, home) {
   if (!args.yes) throw new Error("Refusing to apply without --yes.");
   const rendered = path.resolve(args.rendered || "./rendered");
   if (!fs.existsSync(rendered)) throw new Error("Rendered dir not found: " + rendered);
   if (!fs.existsSync(home)) throw new Error("OpenClaw home not found: " + home);
+
+  assertFreshValidation(rendered);
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backup = home + ".prodclaw-backup." + stamp;
