@@ -38,7 +38,6 @@ Deferred work:
 
 - interactive configure prompts;
 - staged config persistence;
-- cron enablement, which belongs to `prodclaw enable-cron`;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
 ## Doctor Preflight
@@ -109,7 +108,7 @@ Deferred validation work:
 
 - external smoke tests, which belong to `prodclaw doctor`;
 - real non-ProdClaw cron/skill merge verification in apply or OpenClaw CLI registration work;
-- `enable-cron` gating.
+- stricter live `enable-cron` gating after smoke tests exist.
 
 ## Apply Validation Gate
 
@@ -270,7 +269,7 @@ Deferred Slack work:
 
 All v1 compliance cron jobs use `openrouter/xiaomi/mimo-v2.5-pro` as primary with Kimi and GLM fallbacks.
 
-ProdClaw-owned cron jobs must render disabled by default. Setup, render, validate, diff, and apply must not run cron. `prodclaw enable-cron` is the only command that should enable ProdClaw-owned cron jobs, and it must wait for future live smoke checks.
+ProdClaw-owned cron jobs must render disabled by default. Setup, render, validate, diff, and apply must not run cron. `prodclaw enable-cron` is the only command that enables ProdClaw-owned cron jobs.
 
 Current implementation scope:
 
@@ -280,7 +279,22 @@ Current implementation scope:
 - delivery jobs include the `message` tool;
 - delivery jobs target Slack `accountId=compliance`;
 - validation rejects runtime-only cron state;
-- validation rejects enabled ProdClaw cron jobs before `enable-cron`.
+- validation rejects enabled ProdClaw cron jobs before `enable-cron`;
+- `prodclaw enable-cron` requires `--yes`;
+- `prodclaw enable-cron` runs local doctor first unless explicitly skipped;
+- `prodclaw enable-cron` backs up `cron/jobs.json` before writing;
+- `prodclaw enable-cron` enables only jobs whose names start with `prodclaw.compliance.`;
+- `prodclaw enable-cron` preserves non-ProdClaw cron jobs unchanged;
+- `prodclaw enable-cron` prints exactly which jobs were enabled;
+- `prodclaw enable-cron` does not run cron jobs and does not restart the gateway.
+
+Example:
+
+```bash
+prodclaw enable-cron --home ~/.openclaw --rendered ./rendered --yes
+```
+
+`--skip-doctor` exists only as an escape hatch for local development or broken doctor false positives. Normal setup should not use it.
 
 Cron templates are declarative. `templates/cron/jobs.json.tpl` and rendered `cron/jobs.json` should describe desired jobs: identity, schedule, target agent, model policy, tools, and payload.
 
@@ -303,11 +317,10 @@ If an existing user already has local cron runtime state, migration/apply logic 
 
 Deferred cron work:
 
-- real `prodclaw enable-cron` implementation;
 - compliance Slack delivery smoke test;
 - OpenRouter and LanceDB live smoke gates;
 - OpenClaw CLI-based cron registration from #24;
-- preservation/merge logic for non-ProdClaw cron jobs.
+- cron run/smoke execution.
 
 ## Gateway
 

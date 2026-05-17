@@ -9,9 +9,10 @@ const setupScript = path.join(repoRoot, "scripts", "setup.mjs");
 const validateScript = path.join(repoRoot, "scripts", "validate.mjs");
 const doctorScript = path.join(repoRoot, "scripts", "doctor.mjs");
 const revertScript = path.join(repoRoot, "scripts", "revert.mjs");
+const enableCronScript = path.join(repoRoot, "scripts", "enable-cron.mjs");
 
-const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply", "revert"]);
-const planned = new Set(["enable-cron"]);
+const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply", "enable-cron", "revert"]);
+const planned = new Set([]);
 const allCommands = [
   "inspect",
   "configure",
@@ -48,17 +49,15 @@ Implemented in this CLI wrapper:
   prodclaw doctor [--home ~/.openclaw] [--rendered ./rendered] [--json]
   prodclaw diff --home ~/.openclaw --rendered ./rendered
   prodclaw apply --home ~/.openclaw --rendered ./rendered --yes [--full-backup]
+  prodclaw enable-cron --home ~/.openclaw [--rendered ./rendered] --yes
   prodclaw revert --home ~/.openclaw [--backup ~/.openclaw/backups/prodclaw-<timestamp>] --yes
-
-Planned commands currently fail clearly until their implementation issues land:
-  prodclaw enable-cron
 
 Safety rules:
   - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
   - validate checks staged files only
   - apply requires explicit confirmation flags
+  - enable-cron is separate from apply and enables only ProdClaw compliance cron jobs
   - revert restores managed files only from managed backups
-  - enable-cron remains separate from apply
   - no command should print raw secrets
 `);
 }
@@ -80,12 +79,6 @@ function runNode(script, args) {
 
 function failPlanned(command) {
   console.error(`prodclaw ${command} is part of the v1 command surface but is not implemented yet.`);
-  console.error("");
-
-  if (command === "enable-cron") {
-    console.error("Cron enablement is intentionally separate and will be implemented after safety checks.");
-  }
-
   process.exit(2);
 }
 
@@ -124,6 +117,10 @@ if (command === "doctor") {
 
 if (command === "revert") {
   runNode(revertScript, rest);
+}
+
+if (command === "enable-cron") {
+  runNode(enableCronScript, rest);
 }
 
 runNode(setupScript, [command, ...rest]);
