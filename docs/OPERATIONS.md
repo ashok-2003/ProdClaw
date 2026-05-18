@@ -37,13 +37,14 @@ Current configure scope:
 - recommend a compliance Slack account when there is one clear match;
 - recommend skipping main Slack unless an account is already bound to `main`;
 - ask for compliance Slack account choice or new tokens when no clear reusable account exists;
+- support interactive Slack account selection through `--interactive`;
 - write staged Slack mapping when `--config-out` is provided;
 - validate explicitly selected Slack account IDs before staging;
 - reject incomplete or disabled selected Slack accounts;
 - ask for Slack member ID only when not detected;
 - keep main Slack optional;
 - report LanceDB Pro as required when missing, disabled, or not bound;
-- recommend render flags or local profile values until interactive configure lands.
+- recommend render flags or local profile values until broader interactive configure lands.
 
 Slack account recommendation rules:
 
@@ -58,6 +59,11 @@ Slack account recommendation rules:
 Staged Slack mapping examples:
 
 ```bash
+# Interactive selection
+prodclaw configure --home ~/.openclaw \
+  --interactive \
+  --config-out local/prodclaw.configure.json
+
 # Write recommended mapping if unambiguous
 prodclaw configure --home ~/.openclaw --config-out local/prodclaw.configure.json
 
@@ -73,6 +79,8 @@ prodclaw configure --home ~/.openclaw \
   --slack-compliance-account audit-bot \
   --slack-main-account work
 ```
+
+Interactive Slack configure asks which complete discovered account to reuse for compliance, or whether to provide new compliance tokens later. It then asks whether to skip main Slack, reuse a complete discovered account, or provide new main tokens later.
 
 The staged config records discovered accounts and token presence as booleans only. It must not contain raw Slack token values.
 
@@ -92,7 +100,7 @@ Render still requires token flags or environment variables for accounts it creat
 
 Deferred work:
 
-- interactive configure prompts;
+- broader interactive configure for non-Slack values;
 - Slack DM delivery test, which belongs to doctor/enable-cron;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
@@ -340,6 +348,7 @@ Current implementation scope:
 - validation checks main Slack only when it is bound;
 - inspect/configure discover all existing Slack accounts, not only `default` and `compliance`;
 - inspect/configure recommend reuse when there is a clear non-ambiguous account mapping;
+- configure can interactively select Slack account mapping;
 - configure can write a staged Slack mapping JSON with selected account IDs and discovery metadata;
 - staged mapping never includes raw Slack token values;
 - docs include Slack member ID helper text.
@@ -369,7 +378,6 @@ prodclaw render --home ~/.openclaw --out ./rendered \
 
 Deferred Slack work:
 
-- interactive Slack account selection in `prodclaw configure`;
 - compliance Slack delivery test in `prodclaw doctor`;
 - cron enablement gate based on successful compliance delivery;
 - Slack app pairing automation;
