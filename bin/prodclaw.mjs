@@ -11,6 +11,7 @@ const doctorScript = path.join(repoRoot, "scripts", "doctor.mjs");
 const revertScript = path.join(repoRoot, "scripts", "revert.mjs");
 const enableCronScript = path.join(repoRoot, "scripts", "enable-cron.mjs");
 const configureSlackScript = path.join(repoRoot, "scripts", "configure-slack.mjs");
+const renderWithConfigScript = path.join(repoRoot, "scripts", "render-with-config.mjs");
 
 const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply", "enable-cron", "revert"]);
 const planned = new Set([]);
@@ -47,6 +48,7 @@ Implemented in this CLI wrapper:
   prodclaw configure [--home ~/.openclaw]
   prodclaw configure --home ~/.openclaw --config-out local/prodclaw.configure.json [--slack-compliance-account <id>] [--slack-main-account <id> | --skip-main-slack]
   prodclaw render --home ~/.openclaw --out ./rendered [inputs...]
+  prodclaw render --home ~/.openclaw --out ./rendered --config local/prodclaw.configure.json [inputs...]
   prodclaw validate [--rendered ./rendered]
   prodclaw doctor [--home ~/.openclaw] [--rendered ./rendered] [--json]
   prodclaw diff --home ~/.openclaw --rendered ./rendered
@@ -57,6 +59,7 @@ Implemented in this CLI wrapper:
 Safety rules:
   - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
   - configure can write a staged local ProdClaw config only when --config-out is provided
+  - render can consume staged local ProdClaw config with --config or --configure-file
   - validate checks staged files only
   - apply requires explicit confirmation flags
   - enable-cron is separate from apply and enables only ProdClaw compliance cron jobs
@@ -132,6 +135,10 @@ if (command === "enable-cron") {
 
 if (command === "configure" && hasAny(rest, ["--config-out", "--slack-compliance-account", "--slack-main-account", "--skip-main-slack"])) {
   runNode(configureSlackScript, rest);
+}
+
+if (command === "render" && hasAny(rest, ["--config", "--configure-file"])) {
+  runNode(renderWithConfigScript, rest);
 }
 
 runNode(setupScript, [command, ...rest]);
