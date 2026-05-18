@@ -76,10 +76,23 @@ prodclaw configure --home ~/.openclaw \
 
 The staged config records discovered accounts and token presence as booleans only. It must not contain raw Slack token values.
 
+Render can consume staged Slack mapping:
+
+```bash
+prodclaw render --home ~/.openclaw \
+  --out ./rendered \
+  --config local/prodclaw.configure.json \
+  --slack-compliance-app-token <value> \
+  --slack-compliance-bot-token <value>
+```
+
+When staged mapping is provided, render rewrites the rendered compliance Slack account ID, compliance binding, and compliance cron delivery `accountId=` target to the staged `slack.complianceAccountId`. If `slack.mainSlackEnabled` is true, render also adds the staged main Slack account and binding.
+
+Render still requires token flags or environment variables for accounts it creates in rendered output. It does not copy raw token values from the live OpenClaw home into the rendered directory.
+
 Deferred work:
 
 - interactive configure prompts;
-- render consuming staged Slack mapping;
 - Slack DM delivery test, which belongs to doctor/enable-cron;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
@@ -161,7 +174,9 @@ Current validation scope:
 
 - required rendered files exist;
 - compliance Slack is required;
-- main/default Slack is optional, but strict if present;
+- main Slack is optional, but strict if bound;
+- compliance Slack account ID is discovered from the rendered compliance Slack binding;
+- compliance cron delivery must target the rendered compliance Slack account ID;
 - Telegram is disabled;
 - LanceDB Pro is selected as the memory slot;
 - required plugins are enabled;
@@ -172,7 +187,7 @@ Current validation scope:
 - ProdClaw cron jobs are namespaced as `prodclaw.compliance.*`;
 - ProdClaw cron jobs render disabled before `enable-cron`;
 - ProdClaw cron jobs target the compliance agent;
-- delivery cron jobs include the `message` tool and target Slack `accountId=compliance`;
+- delivery cron jobs include the `message` tool;
 - cron job names and IDs are unique;
 - rendered cron output contains only ProdClaw-owned jobs;
 - stale cron runtime state is rejected;
@@ -314,13 +329,15 @@ Main Slack is optional. Users may skip the main/default Slack account and contin
 
 Current implementation scope:
 
-- rendered config includes the compliance Slack account by default;
-- rendered config omits the main/default Slack account by default;
+- rendered config includes a compliance Slack account by default;
+- rendered config can use staged compliance account IDs instead of requiring the literal `compliance` account ID;
+- rendered cron delivery follows the staged compliance account ID;
+- rendered config omits the main Slack account by default;
 - render supports one-bot mode when only compliance Slack is configured;
-- render supports two-bot mode when `--enable-main-slack` is passed with main Slack tokens, or both main Slack token environment variables are present;
+- render supports two-bot mode when staged config or `--enable-main-slack` enables main Slack and main Slack tokens are provided;
 - validation requires compliance Slack;
-- validation allows main/default Slack to be absent;
-- validation checks main/default Slack only when it is present;
+- validation allows main Slack to be absent;
+- validation checks main Slack only when it is bound;
 - inspect/configure discover all existing Slack accounts, not only `default` and `compliance`;
 - inspect/configure recommend reuse when there is a clear non-ambiguous account mapping;
 - configure can write a staged Slack mapping JSON with selected account IDs and discovery metadata;
@@ -332,6 +349,12 @@ Render examples:
 ```bash
 # One-bot mode: compliance Slack only
 prodclaw render --home ~/.openclaw --out ./rendered \
+  --slack-compliance-app-token <value> \
+  --slack-compliance-bot-token <value>
+
+# One-bot mode with staged account ID reuse
+prodclaw render --home ~/.openclaw --out ./rendered \
+  --config local/prodclaw.configure.json \
   --slack-compliance-app-token <value> \
   --slack-compliance-bot-token <value>
 
@@ -347,7 +370,6 @@ prodclaw render --home ~/.openclaw --out ./rendered \
 Deferred Slack work:
 
 - interactive Slack account selection in `prodclaw configure`;
-- render consuming staged Slack mapping;
 - compliance Slack delivery test in `prodclaw doctor`;
 - cron enablement gate based on successful compliance delivery;
 - Slack app pairing automation;
@@ -365,7 +387,7 @@ Current implementation scope:
 - rendered ProdClaw-owned jobs are disabled by default;
 - rendered ProdClaw-owned jobs target the `compliance` agent;
 - delivery jobs include the `message` tool;
-- delivery jobs target Slack `accountId=compliance`;
+- delivery jobs target the rendered compliance Slack account ID;
 - validation rejects runtime-only cron state;
 - validation rejects enabled ProdClaw cron jobs before `enable-cron`;
 - `prodclaw enable-cron` requires `--yes`;
