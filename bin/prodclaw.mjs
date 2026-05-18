@@ -10,6 +10,7 @@ const validateScript = path.join(repoRoot, "scripts", "validate.mjs");
 const doctorScript = path.join(repoRoot, "scripts", "doctor.mjs");
 const revertScript = path.join(repoRoot, "scripts", "revert.mjs");
 const enableCronScript = path.join(repoRoot, "scripts", "enable-cron.mjs");
+const configureSlackScript = path.join(repoRoot, "scripts", "configure-slack.mjs");
 
 const implemented = new Set(["inspect", "configure", "render", "validate", "doctor", "diff", "apply", "enable-cron", "revert"]);
 const planned = new Set([]);
@@ -44,6 +45,7 @@ Rollback:
 Implemented in this CLI wrapper:
   prodclaw inspect [--home ~/.openclaw] [--json]
   prodclaw configure [--home ~/.openclaw]
+  prodclaw configure --home ~/.openclaw --config-out local/prodclaw.configure.json [--slack-compliance-account <id>] [--slack-main-account <id> | --skip-main-slack]
   prodclaw render --home ~/.openclaw --out ./rendered [inputs...]
   prodclaw validate [--rendered ./rendered]
   prodclaw doctor [--home ~/.openclaw] [--rendered ./rendered] [--json]
@@ -54,6 +56,7 @@ Implemented in this CLI wrapper:
 
 Safety rules:
   - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
+  - configure can write a staged local ProdClaw config only when --config-out is provided
   - validate checks staged files only
   - apply requires explicit confirmation flags
   - enable-cron is separate from apply and enables only ProdClaw compliance cron jobs
@@ -80,6 +83,10 @@ function runNode(script, args) {
 function failPlanned(command) {
   console.error(`prodclaw ${command} is part of the v1 command surface but is not implemented yet.`);
   process.exit(2);
+}
+
+function hasAny(args, flags) {
+  return flags.some((flag) => args.includes(flag));
 }
 
 const args = process.argv.slice(2);
@@ -121,6 +128,10 @@ if (command === "revert") {
 
 if (command === "enable-cron") {
   runNode(enableCronScript, rest);
+}
+
+if (command === "configure" && hasAny(rest, ["--config-out", "--slack-compliance-account", "--slack-main-account", "--skip-main-slack"])) {
+  runNode(configureSlackScript, rest);
 }
 
 runNode(setupScript, [command, ...rest]);
