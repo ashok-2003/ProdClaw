@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
 function parseArgs(argv) {
   const out = {};
@@ -9,16 +11,16 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (!arg.startsWith("--")) continue;
     const key = arg.slice(2);
-    if (key === "skip-main-slack" || key === "json") out[key] = true;
+    if (key === "skip-main-slack" || key === "json" || key === "interactive") out[key] = true;
     else out[key] = argv[++i];
   }
   return out;
 }
 
-function expandHome(input) {
-  if (!input || input === "~") return os.homedir();
-  if (input.startsWith("~/")) return path.join(os.homedir(), input.slice(2));
-  return input;
+function expandHome(inputPath) {
+  if (!inputPath || inputPath === "~") return os.homedir();
+  if (inputPath.startsWith("~/")) return path.join(os.homedir(), inputPath.slice(2));
+  return inputPath;
 }
 
 function detectHome(args) {
@@ -84,8 +86,12 @@ function nameHintsCompliance(accountId) {
   return /compliance|audit|report/i.test(accountId);
 }
 
+function completeAccounts(accounts) {
+  return accounts.filter((account) => account.complete && account.enabled !== false);
+}
+
 function recommendCompliance(accounts) {
-  const complete = accounts.filter((account) => account.complete && account.enabled !== false);
+  const complete = completeAccounts(accounts);
   const bound = complete.filter((account) => account.boundAgents.includes("compliance"));
   if (bound.length === 1) return { accountId: bound[0].accountId, reason: "already bound to compliance", needsInput: false };
   if (bound.length > 1) return { accountId: null, reason: "multiple complete accounts already bound to compliance", needsInput: true };
@@ -100,7 +106,7 @@ function recommendCompliance(accounts) {
 }
 
 function recommendMain(accounts) {
-  const complete = accounts.filter((account) => account.complete && account.enabled !== false);
+  const complete = completeAccounts(accounts);
   const bound = complete.filter((account) => account.boundAgents.includes("main"));
   if (bound.length === 1) return { accountId: bound[0].accountId, reason: "already bound to main", mainSlackEnabled: true };
   if (bound.length > 1) return { accountId: null, reason: "multiple complete accounts already bound to main", mainSlackEnabled: false };
@@ -115,12 +121,105 @@ function findAccount(accounts, accountId, label) {
   return account;
 }
 
-function writeStagedMapping(args) {
-  const home = detectHome(args);
-  const { file: configPath, config } = readOpenClawConfig(home);
-  const accounts = detectSlackAccounts(config);
-  const complianceRecommendation = recommendCompliance(accounts);
-  const mainRecommendation = recommendMain(accounts);
+function printDiscoveredAccounts(accounts) {
+  console.log("Detected Slack accounts:");
+  if (accounts.length === 0) {
+    console.log("  none");
+    return;
+  }
+  accounts.forEach((account, index) => {
+    const status = account.complete ? "complete" : "incomplete: missing " + account.missing.join(" and ");
+    const bound = account.boundAgents.length ? account.boundAgents.join(", ") : "none";
+    console.log("  [" + (index + 1) + "] " + account.accountId + " - " + status + "; enabled=" + account.enabled + "; bound=" + bound);
+  });
+}
+
+async function askChoice(rl, prompt, allowed) {
+  while (true) {
+    const answer = (await rl.question(prompt)).trim();
+    if (allowed.includes(answer)) return answer;
+    console.log("Choose one of: " + allowed.join(", "));
+  }
+}
+
+async function chooseComplianceInteractive(accounts, recommendation) {
+  const complete = completeAccounts(accounts);
+  const rl = readline.createInterface({ input, output });
+  try {
+    console.log("");
+    printDiscoveredAccounts(accounts);
+    console.log("");
+    if (recommendation.accountId) {
+      console.log("Recommended compliance account: " + recommendation.accountId + " (" + recommendation.reason + ")");
+    } else {
+      console.log("Compliance account needs input: " + recommendation.reason);
+    }
+    console.log("");
+    console.log("Which Slack account should ProdClaw use for compliance reports?");
+    complete.forEach((account, index) => console.log("  [" + (index + 1) + "] Reuse " + account.accountId));
+    const provideNew = String(complete.length + 1);
+    const skip = String(complete.length + 2);
+    console.log("  [" + provideNew + "] Provide new compliance Slack tokens later");
+    console.log("  [" + skip + "] Skip for now (apply/enable-cron will remain blocked)");
+
+    const defaultChoice = recommendation.accountId
+      ? String(complete.findIndex((account) => account.accountId === recommendation.accountId) + 1)
+      : provideNew;
+    const choice = await askChoice(rl, "Choice [" + defaultChoice + "]: ", ["", ...complete.map((_account, index) => String(index + 1)), provideNew, skip]);
+    const selected = choice || defaultChoice;
+    if (selected === provideNew) return { accountId: null, needsInput: true, reason: "new compliance Slack tokens selected for later" };
+    if (selected === skip) return { accountId: null, needsInput: true, reason: "compliance Slack skipped for now" };
+    return { accountId: complete[Number(selected) - 1].accountId, needsInput: false, reason: "selected interactively" };
+  } finally {
+    rl.close();
+  }
+}
+
+async function chooseMainInteractive(accounts, recommendation) {
+  const complete = completeAccounts(accounts);
+  const rl = readline.createInterface({ input, output });
+  try {
+    console.log("");
+    console.log("Do you want the main agent to be reachable through Slack?");
+    console.log("  [1] No, skip main Slack");
+    complete.forEach((account, index) => console.log("  [" + (index + 2) + "] Reuse " + account.accountId));
+    const provideNew = String(complete.length + 2);
+    console.log("  [" + provideNew + "] Provide new main Slack tokens later");
+
+    const defaultChoice = recommendation.accountId
+      ? String(complete.findIndex((account) => account.accountId === recommendation.accountId) + 2)
+      : "1";
+    const allowed = ["", "1", ...complete.map((_account, index) => String(index + 2)), provideNew];
+    const choice = await askChoice(rl, "Choice [" + defaultChoice + "]: ", allowed);
+    const selected = choice || defaultChoice;
+    if (selected === "1") return { accountId: null, enabled: false, reason: "skipped interactively" };
+    if (selected === provideNew) return { accountId: null, enabled: true, reason: "new main Slack tokens selected for later" };
+    return { accountId: complete[Number(selected) - 2].accountId, enabled: true, reason: "selected interactively" };
+  } finally {
+    rl.close();
+  }
+}
+
+async function selectSlackMapping(args, accounts, complianceRecommendation, mainRecommendation) {
+  if (args.interactive) {
+    const compliance = args["slack-compliance-account"]
+      ? { accountId: findAccount(accounts, args["slack-compliance-account"], "Compliance").accountId, needsInput: false, reason: "selected by --slack-compliance-account" }
+      : await chooseComplianceInteractive(accounts, complianceRecommendation);
+
+    let main;
+    if (args["slack-main-account"] && args["skip-main-slack"]) {
+      throw new Error("Use either --slack-main-account or --skip-main-slack, not both.");
+    }
+    if (args["slack-main-account"]) {
+      main = { accountId: findAccount(accounts, args["slack-main-account"], "Main").accountId, enabled: true, reason: "selected by --slack-main-account" };
+    } else if (args["skip-main-slack"]) {
+      main = { accountId: null, enabled: false, reason: "skipped by --skip-main-slack" };
+    } else {
+      main = await chooseMainInteractive(accounts, mainRecommendation);
+    }
+
+    return { compliance, main };
+  }
 
   const selectedCompliance = args["slack-compliance-account"]
     ? findAccount(accounts, args["slack-compliance-account"], "Compliance").accountId
@@ -128,19 +227,44 @@ function writeStagedMapping(args) {
 
   let selectedMain = null;
   let mainSlackEnabled = false;
+  let mainReason = mainRecommendation.reason;
   if (args["slack-main-account"] && args["skip-main-slack"]) {
     throw new Error("Use either --slack-main-account or --skip-main-slack, not both.");
   }
   if (args["slack-main-account"]) {
     selectedMain = findAccount(accounts, args["slack-main-account"], "Main").accountId;
     mainSlackEnabled = true;
+    mainReason = "selected by --slack-main-account";
   } else if (args["skip-main-slack"]) {
     selectedMain = null;
     mainSlackEnabled = false;
+    mainReason = "skipped by --skip-main-slack";
   } else {
     selectedMain = mainRecommendation.accountId;
     mainSlackEnabled = Boolean(mainRecommendation.accountId);
   }
+
+  return {
+    compliance: {
+      accountId: selectedCompliance,
+      needsInput: !selectedCompliance,
+      reason: args["slack-compliance-account"] ? "selected by --slack-compliance-account" : complianceRecommendation.reason,
+    },
+    main: {
+      accountId: selectedMain,
+      enabled: mainSlackEnabled,
+      reason: mainReason,
+    },
+  };
+}
+
+async function writeStagedMapping(args) {
+  const home = detectHome(args);
+  const { file: configPath, config } = readOpenClawConfig(home);
+  const accounts = detectSlackAccounts(config);
+  const complianceRecommendation = recommendCompliance(accounts);
+  const mainRecommendation = recommendMain(accounts);
+  const selection = await selectSlackMapping(args, accounts, complianceRecommendation, mainRecommendation);
 
   const staged = {
     schema: "prodclaw.configure.v1",
@@ -150,12 +274,12 @@ function writeStagedMapping(args) {
       configPath,
     },
     slack: {
-      complianceAccountId: selectedCompliance,
-      complianceNeedsInput: !selectedCompliance,
-      complianceReason: args["slack-compliance-account"] ? "selected by --slack-compliance-account" : complianceRecommendation.reason,
-      mainAccountId: selectedMain,
-      mainSlackEnabled,
-      mainReason: args["slack-main-account"] ? "selected by --slack-main-account" : args["skip-main-slack"] ? "skipped by --skip-main-slack" : mainRecommendation.reason,
+      complianceAccountId: selection.compliance.accountId,
+      complianceNeedsInput: selection.compliance.needsInput,
+      complianceReason: selection.compliance.reason,
+      mainAccountId: selection.main.accountId,
+      mainSlackEnabled: selection.main.enabled,
+      mainReason: selection.main.reason,
       discoveredAccounts: accounts.map((account) => ({
         accountId: account.accountId,
         enabled: account.enabled,
@@ -177,11 +301,11 @@ function writeStagedMapping(args) {
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(staged, null, 2) + "\n");
   console.log("Wrote staged ProdClaw config: " + out);
-  if (!selectedCompliance) console.log("Compliance Slack still needs explicit input before apply/enable-cron.");
+  if (!selection.compliance.accountId) console.log("Compliance Slack still needs explicit input before apply/enable-cron.");
 }
 
 try {
-  writeStagedMapping(parseArgs(process.argv.slice(2)));
+  await writeStagedMapping(parseArgs(process.argv.slice(2)));
 } catch (error) {
   console.error(error.stack || error.message);
   process.exit(1);
