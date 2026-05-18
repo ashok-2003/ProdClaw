@@ -40,6 +40,44 @@ Deferred work:
 - staged config persistence;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
+## OpenClaw CLI Registration Convention
+
+ProdClaw should prefer OpenClaw's public CLI for OpenClaw-owned runtime registration when the required commands exist.
+
+Use file writes for ProdClaw-owned static assets:
+
+- compliance prompt files;
+- workspace instruction files;
+- consultant and compliance workspace files;
+- ProdClaw-owned skills;
+- rendered desired-state manifests for review and validation.
+
+Prefer OpenClaw CLI commands for runtime objects:
+
+- cron registration;
+- cron listing and verification;
+- cron one-off smoke runs after explicit approval;
+- agent registration;
+- agent listing and binding verification.
+
+Current implementation scope:
+
+- doctor probes whether OpenClaw CLI help is available;
+- doctor probes whether cron and agents command groups appear available;
+- doctor probes whether cron add/list/run and agents add/list/bind commands appear available;
+- probe output is read-only and does not mutate the OpenClaw home;
+- current render/apply/enable-cron behavior remains file-based fallback until exact OpenClaw command syntax is confirmed.
+
+Deferred CLI registration work:
+
+- switch cron registration from direct cron-file writes to OpenClaw CLI when exact command syntax is confirmed;
+- switch agent registration/binding to OpenClaw CLI when exact command syntax is confirmed;
+- make `diff` show intended runtime registration actions before executing them;
+- make `apply` write static files before registering runtime objects that reference those files;
+- document any direct runtime-file fallback when no supported CLI command exists.
+
+Do not invent `openclaw cron add` or `openclaw agents add` flags. Confirm current OpenClaw command syntax first, then implement registration.
+
 ## Doctor Preflight
 
 `prodclaw doctor` answers whether the current setup looks safe enough to continue, using `READY`, `WARN`, and `BROKEN` output.
@@ -49,6 +87,7 @@ Current doctor scope is local-only and read-only:
 - checks OpenClaw home exists;
 - checks OpenClaw config is readable;
 - checks OpenClaw version when available;
+- reports OpenClaw CLI registration command availability where detectable;
 - checks OpenRouter key/config signal without printing secrets;
 - checks LanceDB Pro config state;
 - checks compliance Slack account presence;
