@@ -223,6 +223,24 @@ function assertNoDuplicateCronIds(jobs) {
   }
 }
 
+function slackBindingAccountId(bindings, agentId) {
+  const matches = (Array.isArray(bindings) ? bindings : []).filter((binding) =>
+    binding?.match?.channel === "slack" && binding.agentId === agentId
+  );
+  assert(matches.length <= 1, "Multiple Slack bindings found for agent: " + agentId);
+  return matches[0]?.match?.accountId ?? null;
+}
+
+function assertSlackAccountComplete(account, accountId, label, placeholders) {
+  assert(account, label + " Slack account missing: " + accountId);
+  assert(account.enabled === true, label + " Slack account must be enabled: " + accountId);
+  if (label === "Compliance") {
+    assert(account.groupPolicy === "disabled", "Compliance Slack groupPolicy must be disabled: " + accountId);
+  }
+  assert(isFilled(account.appToken, placeholders.app), label + " Slack app token missing: " + accountId);
+  assert(isFilled(account.botToken, placeholders.bot), label + " Slack bot token missing: " + accountId);
+}
+
 const args = parseArgs(process.argv.slice(2));
 const rendered = path.resolve(args.rendered || "./rendered");
 assert(fs.existsSync(rendered), "Rendered directory not found: " + rendered);
@@ -235,22 +253,25 @@ const config = readJson(path.join(rendered, "openclaw.json"), "openclaw.json");
 const cron = readJson(path.join(rendered, "cron/jobs.json"), "cron/jobs.json");
 const slack = config.channels?.slack;
 const slackAccounts = slack?.accounts ?? {};
-const mainSlack = slackAccounts.default;
-const complianceSlack = slackAccounts.compliance;
+const complianceAccountId = slackBindingAccountId(config.bindings, "compliance") ?? "compliance";
+const mainAccountId = slackBindingAccountId(config.bindings, "main");
+const complianceSlack = slackAccounts[complianceAccountId];
+const mainSlack = mainAccountId ? slackAccounts[mainAccountId] : null;
 
 assert(config.channels?.telegram?.enabled === false, "Telegram must be disabled.");
 assert(slack?.enabled === true, "Slack channel must be enabled for compliance delivery.");
-assert(complianceSlack, "Slack compliance account missing.");
-assert(complianceSlack.enabled === true, "Slack compliance account must be enabled.");
-assert(complianceSlack.groupPolicy === "disabled", "Compliance Slack groupPolicy must be disabled.");
-assert(isFilled(complianceSlack.appToken, "SLACK_COMPLIANCE_APP_TOKEN"), "Missing Slack compliance app token.");
-assert(isFilled(complianceSlack.botToken, "SLACK_COMPLIANCE_BOT_TOKEN"), "Missing Slack compliance bot token.");
+assertSlackAccountComplete(complianceSlack, complianceAccountId, "Compliance", {
+  app: "SLACK_COMPLIANCE_APP_TOKEN",
+  bot: "SLACK_COMPLIANCE_BOT_TOKEN",
+});
 
-// Main/default Slack is optional in v1. If present, it must be complete.
-if (mainSlack) {
-  assert(mainSlack.enabled === true, "Main Slack account must be enabled when configured.");
-  assert(isFilled(mainSlack.appToken, "SLACK_APP_TOKEN"), "Main Slack app token missing; omit main Slack or render with --slack-app-token.");
-  assert(isFilled(mainSlack.botToken, "SLACK_BOT_TOKEN"), "Main Slack bot token missing; omit main Slack or render with --slack-bot-token.");
+// Main Slack is optional in v1. If bound, it must be complete.
+if (mainAccountId) {
+  assert(mainAccountId !== complianceAccountId, "Main Slack must not reuse the compliance Slack account in v1.");
+  assertSlackAccountComplete(mainSlack, mainAccountId, "Main", {
+    app: "SLACK_APP_TOKEN",
+    bot: "SLACK_BOT_TOKEN",
+  });
 }
 
 assert(config.plugins?.slots?.memory === "memory-lancedb-pro", "LanceDB Pro must be selected as memory slot.");
@@ -301,7 +322,7 @@ for (const job of prodclawJobs) {
   assertOpenRouterModel(job.payload?.model, "Cron job " + job.name + " primary model");
   assert(Array.isArray(job.payload?.toolsAllow), "Cron job must declare allowed tools: " + job.name);
   assert(job.payload.toolsAllow.includes("message"), "Delivery cron job must allow message tool: " + job.name);
-  assert(String(job.payload?.message ?? "").includes("accountId=compliance"), "Delivery cron job must target compliance Slack account: " + job.name);
+  assert(String(job.payload?.message ?? "").includes("accountId=" + complianceAccountId), "Delivery cron job must target compliance Slack account " + complianceAccountId + ": " + job.name);
   const fallbacks = job.payload?.fallbacks ?? [];
   assert(fallbacks[0] === "openrouter/moonshotai/kimi-k2.6", "Cron first fallback must be Kimi: " + job.name);
   assert(fallbacks[1] === "openrouter/z-ai/glm-5.1", "Cron second fallback must be GLM: " + job.name);
