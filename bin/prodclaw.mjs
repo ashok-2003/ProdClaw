@@ -46,6 +46,7 @@ Rollback:
 Implemented in this CLI wrapper:
   prodclaw inspect [--home ~/.openclaw] [--json]
   prodclaw configure [--home ~/.openclaw]
+  prodclaw configure --home ~/.openclaw --interactive --config-out local/prodclaw.configure.json
   prodclaw configure --home ~/.openclaw --config-out local/prodclaw.configure.json [--slack-compliance-account <id>] [--slack-main-account <id> | --skip-main-slack]
   prodclaw render --home ~/.openclaw --out ./rendered [inputs...]
   prodclaw render --home ~/.openclaw --out ./rendered --config local/prodclaw.configure.json [inputs...]
@@ -59,6 +60,7 @@ Implemented in this CLI wrapper:
 Safety rules:
   - inspect/configure/render/doctor/diff must not edit the live OpenClaw home
   - configure can write a staged local ProdClaw config only when --config-out is provided
+  - interactive configure records choices only; it does not write secrets
   - render can consume staged local ProdClaw config with --config or --configure-file
   - validate checks staged files only
   - apply requires explicit confirmation flags
@@ -133,7 +135,7 @@ if (command === "enable-cron") {
   runNode(enableCronScript, rest);
 }
 
-if (command === "configure" && hasAny(rest, ["--config-out", "--slack-compliance-account", "--slack-main-account", "--skip-main-slack"])) {
+if (command === "configure" && hasAny(rest, ["--interactive", "--config-out", "--slack-compliance-account", "--slack-main-account", "--skip-main-slack"])) {
   runNode(configureSlackScript, rest);
 }
 
