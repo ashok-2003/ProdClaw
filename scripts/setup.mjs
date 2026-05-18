@@ -10,7 +10,7 @@ const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "
 const templatesRoot = path.join(repoRoot, "templates");
 const memoryPluginId = "memory-lancedb-pro";
 const validationMarkerName = ".prodclaw-validation.json";
-const expectedValidatorVersion = 1;
+const expectedValidatorVersion = 2;
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -193,6 +193,104 @@ function detectOpenClawVersion(home) {
   return null;
 }
 
+function hasFilledSecret(value, placeholder) {
+  return typeof value === "string" && value.length > 0 && value !== placeholder;
+}
+
+function detectSlackBindings(config) {
+  const bindings = Array.isArray(config.bindings) ? config.bindings : [];
+  const byAccount = new Map();
+
+  for (const binding of bindings) {
+    if (binding?.match?.channel !== "slack") continue;
+    const accountId = binding.match.accountId ?? "default";
+    const entry = {
+      accountId,
+      agentId: binding.agentId ?? null,
+      raw: {
+        match: binding.match,
+        agentId: binding.agentId ?? null,
+      },
+    };
+    const existing = byAccount.get(accountId) ?? [];
+    existing.push(entry);
+    byAccount.set(accountId, existing);
+  }
+
+  return byAccount;
+}
+
+function detectSlackAccounts(config) {
+  const accounts = config.channels?.slack?.accounts ?? {};
+  const bindingsByAccount = detectSlackBindings(config);
+  const detected = [];
+
+  for (const [accountId, account] of Object.entries(accounts)) {
+    const appTokenPresent = hasFilledSecret(account?.appToken, "SLACK_APP_TOKEN") && hasFilledSecret(account?.appToken, "SLACK_COMPLIANCE_APP_TOKEN");
+    const botTokenPresent = hasFilledSecret(account?.botToken, "SLACK_BOT_TOKEN") && hasFilledSecret(account?.botToken, "SLACK_COMPLIANCE_BOT_TOKEN");
+    const boundAgents = (bindingsByAccount.get(accountId) ?? [])
+      .map((binding) => binding.agentId)
+      .filter(Boolean);
+    const missing = [];
+    if (!appTokenPresent) missing.push("app token");
+    if (!botTokenPresent) missing.push("bot token");
+
+    detected.push({
+      accountId,
+      enabled: account?.enabled === true,
+      appTokenPresent,
+      botTokenPresent,
+      complete: appTokenPresent && botTokenPresent,
+      missing,
+      boundAgents,
+      recommendedUse: null,
+    });
+  }
+
+  return detected.sort((a, b) => a.accountId.localeCompare(b.accountId));
+}
+
+function nameHintsCompliance(accountId) {
+  return /compliance|audit|report/i.test(accountId);
+}
+
+function recommendComplianceSlackAccount(accounts) {
+  const complete = accounts.filter((account) => account.complete && account.enabled !== false);
+  const boundCompliance = complete.filter((account) => account.boundAgents.includes("compliance"));
+  if (boundCompliance.length === 1) return { accountId: boundCompliance[0].accountId, reason: "already bound to compliance" };
+  if (boundCompliance.length > 1) return { accountId: null, reason: "multiple complete accounts are already bound to compliance; ask explicitly" };
+
+  const nameHinted = complete.filter((account) => nameHintsCompliance(account.accountId));
+  if (nameHinted.length === 1) return { accountId: nameHinted[0].accountId, reason: "account ID suggests compliance/audit/report use" };
+  if (nameHinted.length > 1) return { accountId: null, reason: "multiple complete compliance-like accounts found; ask explicitly" };
+
+  const notMain = complete.filter((account) => !account.boundAgents.includes("main"));
+  if (notMain.length === 1) return { accountId: notMain[0].accountId, reason: "only complete account not bound to main" };
+  if (complete.length === 1) return { accountId: complete[0].accountId, reason: "only complete Slack account found" };
+  if (complete.length > 1) return { accountId: null, reason: "multiple complete Slack accounts found; ask explicitly" };
+  return { accountId: null, reason: "no complete Slack account found" };
+}
+
+function recommendMainSlackAccount(accounts) {
+  const complete = accounts.filter((account) => account.complete && account.enabled !== false);
+  const boundMain = complete.filter((account) => account.boundAgents.includes("main"));
+  if (boundMain.length === 1) return { accountId: boundMain[0].accountId, reason: "already bound to main" };
+  if (boundMain.length > 1) return { accountId: null, reason: "multiple complete accounts are already bound to main; ask explicitly" };
+  return { accountId: null, reason: "main Slack is optional; default is skip" };
+}
+
+function detectSlackState(config) {
+  const accounts = detectSlackAccounts(config);
+  const complianceRecommendation = recommendComplianceSlackAccount(accounts);
+  const mainRecommendation = recommendMainSlackAccount(accounts);
+  return {
+    accounts,
+    bindings: accounts.flatMap((account) => account.boundAgents.map((agentId) => ({ accountId: account.accountId, agentId }))),
+    complianceRecommendation,
+    mainRecommendation,
+  };
+}
+
 function detectMemoryState(config, home) {
   const entries = config.plugins?.entries ?? {};
   const memoryEntry = entries[memoryPluginId];
@@ -257,7 +355,7 @@ function detectState(args) {
   const home = homeCandidate.value;
   const configHit = findFirstJson(home, ["openclaw.json", "config.json"]);
   const config = configHit?.parsed ?? {};
-  const slackAccounts = config.channels?.slack?.accounts ?? {};
+  const slackState = detectSlackState(config);
   const cronFile = path.join(home, "cron", "jobs.json");
   const cron = readJsonIfExists(cronFile);
   const skillsDir = path.join(home, "skills");
@@ -283,8 +381,12 @@ function detectState(args) {
     version: pathExists(home) ? detectOpenClawVersion(home) : null,
     openRouterConfigured,
     slackConfigured: Boolean(config.channels?.slack),
-    complianceSlackConfigured: Boolean(slackAccounts.compliance),
-    mainSlackConfigured: Boolean(slackAccounts.default),
+    slackAccounts: slackState.accounts,
+    slackBindings: slackState.bindings,
+    slackComplianceRecommendation: slackState.complianceRecommendation,
+    slackMainRecommendation: slackState.mainRecommendation,
+    complianceSlackConfigured: Boolean(slackState.complianceRecommendation.accountId),
+    mainSlackConfigured: Boolean(slackState.mainRecommendation.accountId),
     slackUserIdDetected: Boolean(config.channels?.slack?.target || config.owner?.slackUserId || process.env.SLACK_USER_ID),
     memory,
     lancedbInstalled: memory.entryPresent || memory.extensionDirExists,
@@ -301,6 +403,28 @@ function detectState(args) {
 
 function line(status, message) {
   console.log(status.padEnd(7) + message);
+}
+
+function printSlackDiscovery(state) {
+  if (state.slackAccounts.length === 0) {
+    line("WARN", "No Slack accounts discovered");
+  } else {
+    line("READY", "Slack accounts discovered: " + state.slackAccounts.length);
+    for (const account of state.slackAccounts) {
+      const status = account.complete ? "READY" : "WARN";
+      const missing = account.missing.length ? "; missing " + account.missing.join(" and ") : "";
+      const bound = account.boundAgents.length ? "; bound agent(s): " + account.boundAgents.join(", ") : "; bound agent(s): none";
+      line(status, "accountId=" + account.accountId + "; enabled=" + account.enabled + "; appToken=" + (account.appTokenPresent ? "present" : "missing") + "; botToken=" + (account.botTokenPresent ? "present" : "missing") + bound + missing);
+    }
+  }
+
+  const compliance = state.slackComplianceRecommendation;
+  if (compliance.accountId) line("READY", "Recommended compliance Slack account: " + compliance.accountId + " (" + compliance.reason + ")");
+  else line("WARN", "Compliance Slack account needs explicit choice: " + compliance.reason);
+
+  const main = state.slackMainRecommendation;
+  if (main.accountId) line("READY", "Recommended main Slack account: " + main.accountId + " (" + main.reason + ")");
+  else line("WARN", "Main Slack recommendation: skip for now (" + main.reason + ")");
 }
 
 function printInspect(state) {
@@ -326,10 +450,7 @@ function printInspect(state) {
   console.log("");
 
   console.log("Slack");
-  if (state.complianceSlackConfigured) line("READY", "Existing compliance Slack account found");
-  else line("WARN", "Compliance Slack account not detected; configure will ask");
-  if (state.mainSlackConfigured) line("READY", "Existing main Slack account found");
-  else line("WARN", "Main Slack account not configured; optional");
+  printSlackDiscovery(state);
   if (state.slackUserIdDetected) line("READY", "Slack member ID detected");
   else line("WARN", "Slack member ID not detected; configure will ask");
   console.log("");
@@ -364,13 +485,17 @@ function missingConfigureInputs(state) {
   const missing = [];
   missing.push({ key: "owner name", required: true, reason: "always confirm during configure unless supplied by profile/flag" });
   if (!state.openRouterConfigured) missing.push({ key: "OpenRouter API key", required: true, reason: "not detected" });
-  if (!state.complianceSlackConfigured) {
-    missing.push({ key: "compliance Slack app token", required: true, reason: "compliance Slack account not detected" });
-    missing.push({ key: "compliance Slack bot token", required: true, reason: "compliance Slack account not detected" });
+  if (!state.slackComplianceRecommendation.accountId) {
+    if (state.slackAccounts.some((account) => account.complete)) {
+      missing.push({ key: "compliance Slack account choice", required: true, reason: state.slackComplianceRecommendation.reason });
+    } else {
+      missing.push({ key: "compliance Slack app token", required: true, reason: "no complete compliance Slack account detected" });
+      missing.push({ key: "compliance Slack bot token", required: true, reason: "no complete compliance Slack account detected" });
+    }
   }
   if (!state.slackUserIdDetected) missing.push({ key: "compliance Slack member ID", required: true, reason: "not detected" });
   if (state.memory.status !== "READY") missing.push({ key: "LanceDB Pro setup", required: true, reason: state.memory.summary + "; " + state.memory.action });
-  if (!state.mainSlackConfigured) missing.push({ key: "main Slack tokens", required: false, reason: "optional main Slack interaction not detected" });
+  if (!state.slackMainRecommendation.accountId) missing.push({ key: "main Slack", required: false, reason: "optional; default is skip" });
   return missing;
 }
 
@@ -384,9 +509,13 @@ function configure(args) {
   line(state.homeExists ? "READY" : "BROKEN", "OpenClaw home: " + state.home);
   line("READY", "Timezone: " + state.timezone);
   line(state.openRouterConfigured ? "READY" : "WARN", "OpenRouter: " + (state.openRouterConfigured ? "detected" : "missing"));
-  line(state.complianceSlackConfigured ? "READY" : "WARN", "Compliance Slack: " + (state.complianceSlackConfigured ? "detected" : "missing"));
-  line(state.mainSlackConfigured ? "READY" : "WARN", "Main Slack: " + (state.mainSlackConfigured ? "detected" : "optional / missing"));
+  line(state.slackComplianceRecommendation.accountId ? "READY" : "WARN", "Compliance Slack recommendation: " + (state.slackComplianceRecommendation.accountId ?? "needs choice") + " - " + state.slackComplianceRecommendation.reason);
+  line(state.slackMainRecommendation.accountId ? "READY" : "WARN", "Main Slack recommendation: " + (state.slackMainRecommendation.accountId ?? "skip") + " - " + state.slackMainRecommendation.reason);
   line(state.memory.status, "LanceDB Pro: " + state.memory.summary);
+  console.log("");
+
+  console.log("Slack account discovery");
+  printSlackDiscovery(state);
   console.log("");
 
   console.log("Inputs still needed");
@@ -397,6 +526,7 @@ function configure(args) {
   console.log("");
 
   console.log("Configure is non-destructive in this pass. It does not write to the live OpenClaw home.");
+  console.log("Slack account mapping is discovery/recommendation only until interactive configure and staged persistence land.");
   console.log("Use render flags or local/user-profile.json for missing values until interactive configure lands.");
 }
 

@@ -15,8 +15,11 @@ Current inspect scope:
 - detect OpenClaw config files when present;
 - detect OpenClaw version when available;
 - detect whether OpenRouter appears configured without printing secrets;
-- detect Slack accounts when present in config;
-- detect compliance Slack, main Slack, and Slack member ID signals;
+- detect all Slack accounts when present in config;
+- detect Slack account completeness without printing token values;
+- detect Slack account bindings to agents;
+- recommend compliance and main Slack account mapping;
+- detect Slack member ID signals;
 - detect detailed LanceDB Pro state;
 - detect cron config and compliance cron job count;
 - detect local skills directory count;
@@ -28,16 +31,32 @@ Current configure scope:
 
 - report owner name as still needing confirmation unless supplied by profile/flag;
 - ask for OpenRouter only when not detected;
-- ask for compliance Slack app/bot tokens only when compliance Slack is not detected;
+- list all discovered Slack accounts;
+- report Slack account completeness without printing secrets;
+- report Slack account bindings to agents;
+- recommend a compliance Slack account when there is one clear match;
+- recommend skipping main Slack unless an account is already bound to `main`;
+- ask for compliance Slack account choice or new tokens when no clear reusable account exists;
 - ask for Slack member ID only when not detected;
 - keep main Slack optional;
 - report LanceDB Pro as required when missing, disabled, or not bound;
 - recommend render flags or local profile values until interactive configure lands.
 
+Slack account recommendation rules:
+
+- compliance prefers an account already bound to `compliance`;
+- otherwise compliance prefers an account ID containing `compliance`, `audit`, or `report`;
+- otherwise compliance prefers a complete account that is not bound to `main`;
+- otherwise compliance uses the only complete account if exactly one exists;
+- if multiple plausible compliance accounts exist, configure reports that the user must choose;
+- main prefers an account already bound to `main`;
+- otherwise main defaults to skipped because main Slack is optional.
+
 Deferred work:
 
 - interactive configure prompts;
-- staged config persistence;
+- staged config persistence for selected Slack mapping;
+- Slack DM delivery test, which belongs to doctor/enable-cron;
 - OpenClaw CLI-based cron and agent registration, tracked in #24.
 
 ## OpenClaw CLI Registration Convention
@@ -278,6 +297,8 @@ Current implementation scope:
 - validation requires compliance Slack;
 - validation allows main/default Slack to be absent;
 - validation checks main/default Slack only when it is present;
+- inspect/configure discover all existing Slack accounts, not only `default` and `compliance`;
+- inspect/configure recommend reuse when there is a clear non-ambiguous account mapping;
 - docs include Slack member ID helper text.
 
 Render examples:
@@ -299,6 +320,8 @@ prodclaw render --home ~/.openclaw --out ./rendered \
 
 Deferred Slack work:
 
+- interactive Slack account selection in `prodclaw configure`;
+- staged Slack mapping persistence;
 - compliance Slack delivery test in `prodclaw doctor`;
 - cron enablement gate based on successful compliance delivery;
 - Slack app pairing automation;
